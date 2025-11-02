@@ -2,13 +2,18 @@ import Issue from "../models/Issues.js";
 
 export const createIssue = async (req, res) => {
   try {
+    const imageUrl = req.file ? req.file.path : ""; 
+
     const issue = new Issue({
       ...req.body,
       user: req.user._id,
+      image: imageUrl,
     });
+
     await issue.save();
     res.status(201).json(issue);
   } catch (error) {
+    console.error("Create Issue Error:", error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -105,7 +110,6 @@ export const addComment = async (req, res) => {
   }
 };
 
-// ✅ Get Comments for a Specific Issue
 export const getComments = async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id).populate(

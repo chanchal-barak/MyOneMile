@@ -1,8 +1,10 @@
-import { createServer } from "http";
-import { Server } from "socket.io";
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import path from "path";
+import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -19,8 +21,11 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const server = createServer(app);
 
-// ✅ Enable CORS for frontend + socket
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -29,10 +34,9 @@ app.use(
 );
 
 app.use(express.json());
-app.use("/uploads", express.static("uploads"));
+app.use(express.urlencoded({ extended: true }));
 
-// ✅ Create HTTP + WebSocket server
-const server = createServer(app);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const io = new Server(server, {
   cors: {
@@ -41,13 +45,11 @@ const io = new Server(server, {
   },
 });
 
-// ✅ Attach io to each request
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
-// ✅ Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/issues", issueRoutes);
 app.use("/api/community", communityRoutes);
@@ -58,12 +60,16 @@ app.use("/api/compare", compareRoutes);
 app.use("/api/areas", areaRoutes);
 app.use("/api/user", userRoutes);
 
-app.get("/", (req, res) => res.send("Meri Awaaj API running"));
+app.get("/", (req, res) => {
+  res.send("🌐 Meri Awaj API is running successfully!");
+});
 
-// ✅ Socket.io events
 io.on("connection", (socket) => {
   console.log("🟢 User connected:", socket.id);
-  socket.on("disconnect", () => console.log("🔴 User disconnected:", socket.id));
+
+  socket.on("disconnect", () => {
+    console.log("🔴 User disconnected:", socket.id);
+  });
 });
 
 const PORT = process.env.PORT || 4000;

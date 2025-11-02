@@ -10,7 +10,6 @@ export default function CompareList() {
   const [sortBy, setSortBy] = useState("newest");
   const navigate = useNavigate();
 
-  // 🔹 Fetch all comparisons
   useEffect(() => {
     axios
       .get("http://localhost:4000/api/compare")
@@ -18,7 +17,6 @@ export default function CompareList() {
       .catch((err) => console.error("❌ Fetch Compare Error:", err));
   }, []);
 
-  // 🔍 Filter & Sort
   const filteredCompares = useMemo(() => {
     let filtered = compares.filter((c) =>
       `${c.area1} ${c.area2}`.toLowerCase().includes(search.toLowerCase())
@@ -27,7 +25,7 @@ export default function CompareList() {
     if (sortBy === "likes") {
       filtered = filtered.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
     } else {
-      filtered = filtered.reverse(); // assume newest are last
+      filtered = filtered.reverse(); 
     }
 
     return filtered;
@@ -51,7 +49,7 @@ export default function CompareList() {
           Compare Areas
         </motion.h2>
 
-        {/* ✨ Create Button (Desktop) */}
+        {/*  Create Button (Desktop) */}
         <motion.button
           whileHover={{ scale: 1.1, rotate: 5 }}
           whileTap={{ scale: 0.95 }}
@@ -62,7 +60,7 @@ export default function CompareList() {
         </motion.button>
       </div>
 
-      {/* 🔍 Search & Sort Controls */}
+      {/*  Search & Sort Controls */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -95,7 +93,7 @@ export default function CompareList() {
         </div>
       </motion.div>
 
-      {/* 🗂️ Comparison Cards Grid */}
+      {/* Comparison Cards Grid */}
       {filteredCompares.length === 0 ? (
         <motion.p
           initial={{ opacity: 0 }}
@@ -147,7 +145,7 @@ export default function CompareList() {
         </motion.div>
       )}
 
-      {/* 🌿 Floating Create Button (Mobile) */}
+      {/* Floating Create Button (Mobile) */}
       <motion.button
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}

@@ -6,10 +6,9 @@ const getAvatarByGender = (gender = "male") => {
   gender = gender.toLowerCase();
   if (gender === "female") return "https://avatar.iran.liara.run/public/girl?random=1";
   if (gender === "male") return "https://avatar.iran.liara.run/public/boy?random=1";
-  return "https://avatar.iran.liara.run/public"; // neutral
+  return "https://avatar.iran.liara.run/public"; 
 };
 
-// 📍 POST /api/auth/register
 export const register = async (req, res) => {
   try {
     const { name, email, password, phone, birth, gender, avatar } = req.body;
@@ -25,7 +24,7 @@ export const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // ✅ Use provided avatar or generate based on gender
+    
     const avatarUrl = avatar || getAvatarByGender(gender);
 
     const user = await User.create({
@@ -59,7 +58,6 @@ export const register = async (req, res) => {
   }
 };
 
-// 📍 POST /api/auth/login
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -91,8 +89,6 @@ export const login = async (req, res) => {
   }
 };
 
-
-// ✅ Get Profile
 export const getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
@@ -103,7 +99,6 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
-// ✅ Update Profile
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user._id;

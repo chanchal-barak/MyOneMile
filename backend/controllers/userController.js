@@ -1,7 +1,6 @@
 import Issue from "../models/Issues.js";
 import User from "../models/User.js";
 
-// 🟩 Get user's own reported issues
 export const getMyPosts = async (req, res) => {
   try {
     const issues = await Issue.find({ user: req.user._id }).sort({ createdAt: -1 });
@@ -12,7 +11,6 @@ export const getMyPosts = async (req, res) => {
   }
 };
 
-// 🟩 Get issues liked by user
 export const getMyLikedPosts = async (req, res) => {
   try {
     const issues = await Issue.find({ likes: req.user._id }).sort({ createdAt: -1 });
@@ -23,7 +21,6 @@ export const getMyLikedPosts = async (req, res) => {
   }
 };
 
-// 🟩 Get user stats
 export const getUserStats = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -47,7 +44,6 @@ export const getUserStats = async (req, res) => {
   }
 };
 
-// 🟩 Delete account
 export const deleteAccount = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -59,13 +55,11 @@ export const deleteAccount = async (req, res) => {
   }
 };
 
-// 🟩 Update profile (Edit Profile)
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user._id;
     const updates = req.body;
 
-    // Normalize gender and update avatar automatically
     if (updates.gender) {
       updates.gender = updates.gender.toLowerCase();
       if (updates.gender === "female") {

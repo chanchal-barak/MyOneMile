@@ -15,7 +15,6 @@ export default function Home() {
   const token = localStorage.getItem("token");
   const BACKEND_URL = "http://localhost:4000";
 
-  /* 🟣 SOCKET SETUP (Real-time updates) */
   useEffect(() => {
     const socket = io(BACKEND_URL, { transports: ["websocket"] });
 
@@ -28,7 +27,6 @@ export default function Home() {
     return () => socket.disconnect();
   }, []);
 
-  /* 🟣 FETCH ISSUES */
   const fetchIssues = async () => {
     try {
       const res = await axios.get(`${BACKEND_URL}/api/issues`);
@@ -53,12 +51,10 @@ export default function Home() {
     fetchIssues();
   }, [user?._id]);
 
-  /* ✅ HANDLE LIKE */
   const handleLike = async (id) => {
     if (!token) return alert("Please login to like posts");
 
     try {
-      // Update immediately in UI
       setIssues((prev) =>
         prev.map((i) =>
           i._id === id
@@ -75,8 +71,7 @@ export default function Home() {
       setUserLikes((prev) => ({ ...prev, [id]: !prev[id] }));
       setUserDislikes((prev) => ({ ...prev, [id]: false }));
 
-      // Send to backend
-      const res = await axios.put(
+      await axios.put(
         `${BACKEND_URL}/api/issues/${id}/like`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
@@ -86,12 +81,10 @@ export default function Home() {
     }
   };
 
-  /* ✅ HANDLE DISLIKE */
   const handleDislike = async (id) => {
     if (!token) return alert("Please login to dislike posts");
 
     try {
-      // Update immediately in UI
       setIssues((prev) =>
         prev.map((i) =>
           i._id === id
@@ -108,8 +101,7 @@ export default function Home() {
       setUserDislikes((prev) => ({ ...prev, [id]: !prev[id] }));
       setUserLikes((prev) => ({ ...prev, [id]: false }));
 
-      // Send to backend
-      const res = await axios.put(
+      await axios.put(
         `${BACKEND_URL}/api/issues/${id}/dislike`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
@@ -119,20 +111,20 @@ export default function Home() {
     }
   };
 
-  /* 🟣 OPEN COMMENTS MODAL */
+  // 💬 Open comment modal
   const openComments = async (issue) => {
     try {
       setSelectedIssue(issue);
       const res = await axios.get(
         `${BACKEND_URL}/api/issues/${issue._id}/comments`
       );
-      setComments(res.data.comments || []);
+      setComments(res.data || []); // Ensure comments array
     } catch (err) {
       console.error("Comment fetch error:", err);
     }
   };
 
-  /* 🟣 ADD COMMENT */
+  // ➕ Add new comment
   const handleAddComment = async () => {
     if (!token) return alert("Please login to comment");
     if (!newComment.trim()) return;
@@ -144,13 +136,14 @@ export default function Home() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setComments((prev) => [...prev, res.data.comment]);
+      setComments((prev) => [...prev, res.data]);
       setNewComment("");
     } catch (err) {
       console.error("Add comment error:", err);
     }
   };
 
+  // 🏡 UI
   return (
     <main
       className="min-h-screen px-4 py-6"
@@ -181,21 +174,18 @@ export default function Home() {
               {issue.image && (
                 <div className="sm:w-1/3">
                   <img
-                    src={
-                      issue.image.startsWith("http")
-                        ? issue.image
-                        : `${BACKEND_URL}/${issue.image}`
-                    }
+                    src={`${BACKEND_URL}${issue.image}`} // ✅ FIXED — no extra slash
                     alt={issue.title}
                     className="w-full h-48 sm:h-full object-cover border-t sm:border-l border-purple-100"
+                    onError={(e) => (e.target.style.display = "none")}
                   />
                 </div>
               )}
             </div>
 
-            {/* 🟣 ACTIONS BAR */}
+            {/* ACTIONS BAR */}
             <div className="flex justify-around items-center py-3 border-t border-purple-100 bg-purple-50/30">
-              {/* 💜 LIKE BUTTON */}
+              {/* LIKE */}
               <motion.button
                 onClick={() => handleLike(issue._id)}
                 whileTap={{ scale: 1.1 }}
@@ -212,7 +202,7 @@ export default function Home() {
                 <span className="hidden sm:inline">Likes</span>
               </motion.button>
 
-              {/* 👎 DISLIKE BUTTON */}
+              {/* DISLIKE */}
               <motion.button
                 onClick={() => handleDislike(issue._id)}
                 whileTap={{ scale: 1.1 }}
@@ -229,7 +219,7 @@ export default function Home() {
                 <span className="hidden sm:inline">Dislikes</span>
               </motion.button>
 
-              {/* 💬 COMMENT BUTTON */}
+              {/* COMMENTS */}
               <button
                 onClick={() => openComments(issue)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-50 transition-all"
@@ -242,7 +232,7 @@ export default function Home() {
         ))}
       </div>
 
-      {/* 💬 COMMENT MODAL */}
+      {/* COMMENT MODAL */}
       {selectedIssue && (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full relative shadow-xl">
@@ -296,3 +286,4 @@ export default function Home() {
     </main>
   );
 }
+

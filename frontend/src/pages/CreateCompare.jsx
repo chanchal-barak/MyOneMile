@@ -73,7 +73,6 @@ export default function CreateCompare() {
     }
   };
 
-  // ✨ Dropdown animation variant
   const dropdownAnim = {
     initial: { opacity: 0, scale: 0.95, y: -10 },
     animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.2 } },
