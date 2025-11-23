@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { register, login, updateProfile, getUserProfile} from "../controllers/authController.js";
+import { register, login, getUserProfile, updateProfile } from "../controllers/authController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -17,4 +17,3 @@ router.get("/me", authMiddleware, getUserProfile);
 router.put("/update-profile", authMiddleware, upload.single("avatar"), updateProfile);
 
 export default router;
-

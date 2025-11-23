@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
-import { FaHeart, FaRegHeart, FaArrowLeft, FaPlus } from "react-icons/fa";
-import { motion } from "framer-motion";
+import { FaHeart, FaRegHeart, FaArrowLeft, FaTrash } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function CompareDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [compare, setCompare] = useState(null);
   const [user, setUser] = useState(null);
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -58,6 +61,27 @@ export default function CompareDetail() {
     }
   };
 
+  const deleteCompare = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await axios.delete(`http://localhost:4000/api/compare/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      setShowDeleteConfirm(false);
+      setDeleteSuccess(true);
+
+      setTimeout(() => {
+        navigate("/compare");
+      }, 700);
+    } catch (err) {
+      console.error("❌ Delete failed:", err.response?.data || err);
+      alert("Delete failed. Make sure you are the owner.");
+    }
+  };
+
   if (!compare)
     return (
       <div className="text-center mt-20 text-green-700 font-semibold">
@@ -67,6 +91,7 @@ export default function CompareDetail() {
 
   const userId = user?._id;
   const liked = compare.likes?.includes(userId);
+  const isOwner = compare.createdBy === userId;
 
   return (
     <motion.div
@@ -75,7 +100,7 @@ export default function CompareDetail() {
       transition={{ duration: 0.6 }}
       className="min-h-screen bg-gradient-to-b from-green-50 to-green-100 p-6 flex flex-col items-center relative"
     >
-      {/* Back Button */}
+      {/* Back */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -86,16 +111,11 @@ export default function CompareDetail() {
       </motion.button>
 
       {/* Title */}
-      <motion.h2
-        initial={{ y: -10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="text-3xl font-bold text-green-800 mb-4 text-center"
-      >
+      <h2 className="text-3xl font-bold text-green-800 mb-4 text-center">
         {compare.area1} <span className="text-green-600">vs</span> {compare.area2}
-      </motion.h2>
+      </h2>
 
-      {/* Like Button */}
+      {/* Like */}
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
@@ -110,78 +130,97 @@ export default function CompareDetail() {
         {compare.likes?.length || 0} Likes
       </motion.button>
 
-      {/* Categories List */}
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="w-full max-w-2xl bg-white border border-green-200 rounded-2xl shadow-xl p-6"
-      >
+      {/* Delete Button */}
+      {isOwner && (
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setShowDeleteConfirm(true)}
+          className="flex items-center gap-2 bg-red-600 text-white px-5 py-2 rounded-full shadow-lg mb-6 hover:bg-red-700 transition-all"
+        >
+          <FaTrash /> Delete Comparison
+        </motion.button>
+      )}
+
+      {/* Categories */}
+      <motion.div className="w-full max-w-2xl bg-white border border-green-200 rounded-2xl shadow-xl p-6">
         {compare.categories.map((cat, i) => {
           const userVote = cat.votes.find(
             (v) => v.user === userId || v.user?._id === userId
           );
 
           return (
-            <motion.div
-              key={i}
-              whileHover={{ scale: 1.02 }}
-              className="flex justify-between items-center border-b border-green-100 py-3"
-            >
+            <div key={i} className="flex justify-between items-center border-b border-green-100 py-3">
               {/* Area 1 */}
-              <div className="flex flex-col items-center w-1/3">
-                <button
-                  onClick={() => handleVote(i, "area1")}
-                  className="flex items-center gap-1"
-                >
-                  {userVote?.area === "area1" ? (
-                    <FaHeart className="text-green-600 text-xl" />
-                  ) : (
-                    <FaRegHeart className="text-green-600 text-xl" />
-                  )}
-                  <span className="text-green-700 font-medium">
-                    {cat.area1Votes}
-                  </span>
-                </button>
-              </div>
+              <button
+                onClick={() => handleVote(i, "area1")}
+                className="flex items-center gap-1 w-1/3 justify-center"
+              >
+                {userVote?.area === "area1" ? (
+                  <FaHeart className="text-green-600 text-xl" />
+                ) : (
+                  <FaRegHeart className="text-green-600 text-xl" />
+                )}
+                <span className="text-green-700 font-medium">{cat.area1Votes}</span>
+              </button>
 
-              {/* Category name */}
+              {/* Name */}
               <p className="font-semibold text-green-800 w-1/3 text-center text-lg">
                 {cat.name}
               </p>
 
               {/* Area 2 */}
-              <div className="flex flex-col items-center w-1/3">
-                <button
-                  onClick={() => handleVote(i, "area2")}
-                  className="flex items-center gap-1"
-                >
-                  {userVote?.area === "area2" ? (
-                    <FaHeart className="text-green-600 text-xl" />
-                  ) : (
-                    <FaRegHeart className="text-green-600 text-xl" />
-                  )}
-                  <span className="text-green-700 font-medium">
-                    {cat.area2Votes}
-                  </span>
-                </button>
-              </div>
-            </motion.div>
+              <button
+                onClick={() => handleVote(i, "area2")}
+                className="flex items-center gap-1 w-1/3 justify-center"
+              >
+                {userVote?.area === "area2" ? (
+                  <FaHeart className="text-green-600 text-xl" />
+                ) : (
+                  <FaRegHeart className="text-green-600 text-xl" />
+                )}
+                <span className="text-green-700 font-medium">{cat.area2Votes}</span>
+              </button>
+            </div>
           );
         })}
       </motion.div>
 
-      {/* Floating Create Button */}
-      <motion.button
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        whileHover={{ scale: 1.1, rotate: 10 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => navigate("/compare/new")}
-        className="fixed bottom-8 right-8 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700 transition-all"
-      >
-        <FaPlus size={20} />
-      </motion.button>
+      {/* Delete Confirm Popup */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
+            <div className="bg-white p-6 rounded-2xl shadow-xl w-80 text-center">
+              <h3 className="text-lg font-bold text-red-600 mb-3">Delete Comparison?</h3>
+              <p className="text-gray-600 mb-4">This action cannot be undone.</p>
+
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 bg-gray-200 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={deleteCompare}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Success */}
+      <AnimatePresence>
+        {deleteSuccess && (
+          <motion.div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-4 rounded-xl shadow-xl flex items-center gap-3">
+            <FaTrash /> <span>Deleted Successfully</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

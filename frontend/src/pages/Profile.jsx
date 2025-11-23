@@ -11,6 +11,7 @@ import {
   Edit,
   Users,
   BookOpen,
+  Flag, 
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useUser } from "../context/UserContext";
@@ -25,7 +26,7 @@ export default function Profile() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState(true);
 
-  // 🧩 Load user from localStorage
+ 
   useEffect(() => {
     if (!user) {
       const storedUser = localStorage.getItem("user");
@@ -37,7 +38,7 @@ export default function Profile() {
     }
   }, [user, setUser, navigate]);
 
-  // 📊 Fetch stats
+  
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -48,29 +49,26 @@ export default function Profile() {
         });
         setStats(res.data);
       } catch (err) {
-        console.error(err);
+        console.error("Stats error:", err.response?.data || err.message);
       }
     };
     fetchStats();
   }, []);
 
-  // 🧍‍♂️ Avatar
-const getAvatar = () => {
-  if (user?.avatar) return user.avatar;
+  const getAvatar = () => {
+    if (user?.avatar) return user.avatar;
 
-  const gender = user?.gender?.toString().trim().toLowerCase();
+    const gender = user?.gender?.toString().toLowerCase();
+    if (gender === "female" || gender === "f") {
+      return "https://cdn-icons-png.flaticon.com/512/4140/4140046.png";
+    } else if (gender === "male" || gender === "m") {
+      return "https://cdn-icons-png.flaticon.com/512/4140/4140048.png";
+    } else {
+      return "https://cdn-icons-png.flaticon.com/512/9131/9131529.png";
+    }
+  };
 
-  if (gender === "female" || gender === "f") {
-    return "https://cdn-icons-png.flaticon.com/512/4140/4140046.png"; 
-  } else if (gender === "male" || gender === "m") {
-    return "https://cdn-icons-png.flaticon.com/512/4140/4140048.png"; 
-  } else {
-    return "https://cdn-icons-png.flaticon.com/512/9131/9131529.png"; 
-  }
-};
-
-
-  // 🚪 Logout
+  
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -79,7 +77,7 @@ const getAvatar = () => {
     navigate("/login");
   };
 
-  // ❌ Delete Account
+ 
   const handleDeleteAccount = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -90,7 +88,7 @@ const getAvatar = () => {
       localStorage.removeItem("user");
       setUser(null);
       toast.success("Account deleted successfully!");
-      navigate("/register");
+      navigate("/signup");
     } catch (err) {
       console.error(err);
       toast.error("Failed to delete account");
@@ -154,7 +152,7 @@ const getAvatar = () => {
         </motion.div>
       </motion.div>
 
-      {/* ⚙️ Options */}
+      {/* ⚙️ Options List */}
       <motion.div
         className="mt-10 w-full max-w-md bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-6 border border-purple-100"
         initial={{ opacity: 0, y: 30 }}
@@ -172,10 +170,12 @@ const getAvatar = () => {
             label="My Likes"
             onClick={() => navigate("/mylikes")}
           />
+
+          {/* ✅ NEW: My Reports */}
           <ProfileRow
-            icon={<Globe size={20} />}
-            label="My Communities"
-            onClick={() => navigate("/mycommunities")}
+            icon={<Flag size={20} />}
+            label="My Reports"
+            onClick={() => navigate("/my-reports")}
           />
 
           {/* 🔔 Notification Toggle */}
@@ -200,7 +200,6 @@ const getAvatar = () => {
             </motion.div>
           </div>
 
-          {/* 🗑 Delete / 🚪 Logout */}
           <ProfileRow
             icon={<Trash2 size={20} />}
             label="Delete Account"
@@ -214,7 +213,7 @@ const getAvatar = () => {
         </div>
       </motion.div>
 
-      {/* 🧾 Footer */}
+      {/* Footer */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -224,7 +223,7 @@ const getAvatar = () => {
         App Version 2.3
       </motion.p>
 
-      {/* 🔒 Logout Modal */}
+      {/* LOGOUT MODAL */}
       <AnimatePresence>
         {showLogoutModal && (
           <Modal
@@ -238,12 +237,12 @@ const getAvatar = () => {
         )}
       </AnimatePresence>
 
-      {/* ❌ Delete Account Modal */}
+      {/* DELETE MODAL */}
       <AnimatePresence>
         {showDeleteModal && (
           <Modal
             title="Delete Account?"
-            message="Are you sure you want to delete your account? This cannot be undone."
+            message="Are you sure? This action cannot be undone."
             confirmLabel="Delete"
             confirmColor="red"
             onConfirm={handleDeleteAccount}
@@ -255,7 +254,7 @@ const getAvatar = () => {
   );
 }
 
-/* --- 💡 Reusable Components --- */
+/* --- Reusable Components --- */
 
 function ProfileRow({ icon, label, onClick }) {
   return (

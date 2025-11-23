@@ -1,8 +1,18 @@
-import Issue from "../models/Issues.js";
 
+import Issue from "../models/Issues.js";
 export const createIssue = async (req, res) => {
   try {
-    const imageUrl = req.file ? req.file.path : ""; 
+    console.log("📸 Uploaded file info:", req.file);
+
+    let imageUrl = "";
+    if (req.file) {
+      imageUrl =
+        req.file.path ||
+        req.file.secure_url ||
+        (req.file.filename
+          ? `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/image/upload/${req.file.filename}`
+          : "");
+    }
 
     const issue = new Issue({
       ...req.body,
@@ -11,9 +21,10 @@ export const createIssue = async (req, res) => {
     });
 
     await issue.save();
+    console.log("Issue created with image:", imageUrl);
     res.status(201).json(issue);
   } catch (error) {
-    console.error("Create Issue Error:", error);
+    console.error(" Create Issue Error:", error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -33,7 +44,6 @@ export const likeIssue = async (req, res) => {
     if (!issue) return res.status(404).json({ message: "Issue not found" });
 
     const userId = req.user._id.toString();
-
     issue.dislikes = issue.dislikes.filter((id) => id.toString() !== userId);
 
     if (issue.likes.some((id) => id.toString() === userId)) {
@@ -43,19 +53,9 @@ export const likeIssue = async (req, res) => {
     }
 
     await issue.save();
-
-    if (req.io) {
-      req.io.emit("issueLiked", {
-        issueId: issue._id,
-        likes: issue.likes,
-        dislikes: issue.dislikes,
-      });
-    }
-
     res.json({ likes: issue.likes, dislikes: issue.dislikes });
   } catch (error) {
-    console.error("Like Issue Error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -65,7 +65,6 @@ export const dislikeIssue = async (req, res) => {
     if (!issue) return res.status(404).json({ message: "Issue not found" });
 
     const userId = req.user._id.toString();
-
     issue.likes = issue.likes.filter((id) => id.toString() !== userId);
 
     if (issue.dislikes.some((id) => id.toString() === userId)) {
@@ -75,21 +74,12 @@ export const dislikeIssue = async (req, res) => {
     }
 
     await issue.save();
-
-    if (req.io) {
-      req.io.emit("issueDisliked", {
-        issueId: issue._id,
-        likes: issue.likes,
-        dislikes: issue.dislikes,
-      });
-    }
-
     res.json({ likes: issue.likes, dislikes: issue.dislikes });
   } catch (error) {
-    console.error("Dislike Issue Error:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
+
 export const addComment = async (req, res) => {
   try {
     const { text } = req.body;
@@ -97,14 +87,17 @@ export const addComment = async (req, res) => {
 
     if (!issue) return res.status(404).json({ message: "Issue not found" });
 
-    issue.comments.push({
+    const comment = {
       user: req.user._id,
       text,
       createdAt: new Date(),
-    });
+    };
 
+    issue.comments.push(comment);
     await issue.save();
-    res.json(issue);
+
+    const populated = await issue.populate("comments.user", "name");
+    res.json(populated.comments);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
@@ -116,11 +109,42 @@ export const getComments = async (req, res) => {
       "comments.user",
       "name"
     );
-
     if (!issue) return res.status(404).json({ message: "Issue not found" });
 
     res.json(issue.comments);
   } catch (error) {
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const deleteComment = async (req, res) => {
+  try {
+    const issue = await Issue.findById(req.params.id);
+    if (!issue) return res.status(404).json({ message: "Issue not found" });
+
+    issue.comments = issue.comments.filter(
+      (c) => c._id.toString() !== req.params.commentId
+    );
+    await issue.save();
+
+    res.json(issue.comments);
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+export const deleteIssue = async (req, res) => {
+  try {
+    const issue = await Issue.findById(req.params.id);
+    if (!issue) return res.status(404).json({ message: "Issue not found" });
+
+    if (issue.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Unauthorized to delete this issue" });
+    }
+
+    await issue.deleteOne();
+    res.json({ message: "Issue deleted successfully" });
+  } catch (err) {
+    console.error("Delete issue error:", err);
+    res.status(500).json({ message: "Server error while deleting issue" });
   }
 };

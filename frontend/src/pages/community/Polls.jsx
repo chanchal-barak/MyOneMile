@@ -1,171 +1,230 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { BarChart3, Send } from "lucide-react";
+import { ArrowLeft, Plus, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 
-export default function Polls() {
+export default function Poll() {
+  const navigate = useNavigate();
   const [polls, setPolls] = useState([]);
-  const [question, setQuestion] = useState("");
-  const [options, setOptions] = useState(["", ""]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchPolls();
-  }, []);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ question: "", options: ["", ""] });
+  const token = localStorage.getItem("token");
+  const userId = localStorage.getItem("userId");
 
   const fetchPolls = async () => {
     try {
       const res = await axios.get("http://localhost:4000/api/polls");
       setPolls(res.data);
     } catch (err) {
-      console.error(err);
+      toast.error("Failed to load polls");
     }
   };
 
-  const addOption = () => setOptions([...options, ""]);
+  useEffect(() => {
+    fetchPolls();
+  }, []);
 
-  const updateOption = (i, val) => {
-    const newOpts = [...options];
-    newOpts[i] = val;
-    setOptions(newOpts);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!question.trim() || options.some((o) => !o.trim())) return;
-
+  const handleVote = async (pollId, index) => {
     try {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await axios.post(
-        "http://localhost:4000/api/polls",
-        { question, options },
+      if (!token) return toast.error("Login required");
+      await axios.post(
+        `http://localhost:4000/api/polls/${pollId}/vote`,
+        { optionIndex: index },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setPolls([res.data, ...polls]);
-      setQuestion("");
-      setOptions(["", ""]);
+      fetchPolls();
     } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+      toast.error(err.response?.data?.message || "Failed to vote");
     }
   };
 
-  const vote = async (id, index) => {
+  const handleClearVote = async (pollId) => {
     try {
-      const res = await axios.post(`http://localhost:4000/api/polls/${id}/vote`, { optionIndex: index });
-      setPolls(polls.map((p) => (p._id === id ? res.data : p)));
+      await axios.post(
+        `http://localhost:4000/api/polls/${pollId}/vote`,
+        { clear: true },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Vote cleared");
+      fetchPolls();
     } catch (err) {
-      console.error(err);
+      toast.error("Failed to clear vote");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white p-6 flex flex-col items-center">
-      {/* Header */}
-      <h1 className="text-2xl font-bold text-green-600 mb-6 flex items-center gap-2">
-        <BarChart3 size={24} /> Community Polls
-      </h1>
-
-      {/* Create Poll Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-5 rounded-xl shadow-md max-w-lg w-full mb-8"
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-orange-100 px-5 py-6">
+      {/* Back */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center text-orange-600 font-medium mb-4"
       >
-        <input
-          placeholder="Ask a question..."
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          className="border w-full mb-3 rounded px-3 py-2 outline-none focus:ring-2 focus:ring-green-300"
-        />
+        <ArrowLeft size={20} className="mr-1" /> Back
+      </button>
 
-        {options.map((opt, i) => (
-          <input
-            key={i}
-            placeholder={`Option ${i + 1}`}
-            value={opt}
-            onChange={(e) => updateOption(i, e.target.value)}
-            className="border w-full mb-2 rounded px-3 py-2 outline-none focus:ring-2 focus:ring-green-300"
-          />
-        ))}
+      <h2 className="text-center text-2xl sm:text-3xl font-extrabold text-orange-700 mb-6">
+        Community Polls 📊
+      </h2>
 
-        <button
-          type="button"
-          onClick={addOption}
-          className="text-green-600 mb-4 text-sm hover:underline"
-        >
-          + Add another option
-        </button>
+      <div className="space-y-6 max-w-3xl mx-auto pb-20">
+        {polls.map((poll) => {
+          const totalVotes = poll.options.reduce((a, b) => a + b.votes, 0);
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-green-600 hover:bg-green-700 text-white w-full py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition"
-        >
-          <Send size={16} />
-          {loading ? "Creating..." : "Create Poll"}
-        </button>
-      </form>
+          const myVote = poll.voters.find(
+            (v) => v.user === userId || v.user?._id === userId
+          );
 
-      {/* Polls List */}
-      <div className="space-y-6 w-full max-w-lg">
-        {polls.map((p) => {
-          const totalVotes = p.options.reduce((sum, o) => sum + o.votes, 0);
           return (
             <div
-              key={p._id}
-              className="bg-white shadow-md rounded-xl p-5 border border-green-100"
+              key={poll._id}
+              className="bg-white rounded-2xl p-4 sm:p-5 shadow-md border border-orange-100"
             >
-              {/* Poll Header */}
-              <h2 className="font-semibold text-gray-800 text-lg mb-1">
-                {p.question}
-              </h2>
-              <p className="text-xs text-gray-400 mb-3">
-                Posted by {p.createdBy?.name || "Anonymous"}
+              <h3 className="text-lg sm:text-xl font-semibold text-orange-800 mb-3">
+                {poll.question}
+              </h3>
+
+              <div className="space-y-3">
+                {poll.options.map((opt, i) => {
+                  const percent =
+                    totalVotes === 0
+                      ? 0
+                      : ((opt.votes / totalVotes) * 100).toFixed(1);
+
+                  const voted = myVote?.optionIndex === i;
+
+                  return (
+                    <div key={i} className="relative">
+                      <button
+                        onClick={() => handleVote(poll._id, i)}
+                        className={`relative w-full text-left border rounded-xl px-3 py-2 sm:py-3 overflow-hidden transition-all ${
+                          voted
+                            ? "bg-gradient-to-r from-orange-500 to-orange-600 border-orange-600 text-white shadow-md"
+                            : "bg-orange-50 hover:bg-orange-100 border-orange-200 text-gray-800"
+                        }`}
+                      >
+                        {/* progress bar */}
+                        <div
+                          className={`absolute left-0 top-0 h-full rounded-xl ${
+                            voted ? "bg-white/20" : "bg-orange-200/40"
+                          }`}
+                          style={{ width: `${percent}%` }}
+                        ></div>
+
+                        <div className="relative">
+                          <div className="font-medium">{opt.text}</div>
+                          <div className="text-xs sm:text-sm mt-1 opacity-80">
+                            {opt.votes} votes ({percent}%)
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="text-xs text-gray-500 mt-3">
+                Total votes: {totalVotes}
               </p>
 
-              {/* Poll Options */}
-              {p.options.map((opt, i) => {
-                const percentage =
-                  totalVotes === 0
-                    ? 0
-                    : Math.round((opt.votes / totalVotes) * 100);
-                return (
-                  <div key={i} className="mb-3">
-                    <button
-                      onClick={() => vote(p._id, i)}
-                      className="w-full relative text-left border rounded-lg px-4 py-2 hover:bg-green-50 transition flex justify-between items-center"
-                    >
-                      <span>{opt.text}</span>
-                      <span className="text-sm text-gray-500">
-                        {opt.votes} votes
-                      </span>
-                    </button>
-
-                    {/* Progress Bar */}
-                    <div className="h-2 bg-gray-100 rounded-full mt-1 overflow-hidden">
-                      <div
-                        className="h-full bg-green-400 transition-all duration-500"
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-
-                    <p className="text-xs text-gray-500 mt-1">
-                      {percentage}% of votes
-                    </p>
-                  </div>
-                );
-              })}
-
-              {totalVotes > 0 && (
-                <p className="text-xs text-gray-400 mt-3 text-right">
-                  Total votes: {totalVotes}
-                </p>
+              {myVote && (
+                <button
+                  onClick={() => handleClearVote(poll._id)}
+                  className="text-orange-600 text-sm mt-2 underline"
+                >
+                  Clear my vote
+                </button>
               )}
             </div>
           );
         })}
       </div>
+
+      {/* Floating Button */}
+      <button
+        onClick={() => setShowForm(true)}
+        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 rounded-full shadow-xl flex items-center justify-center"
+      >
+        <Plus size={22} />
+      </button>
+
+      {/* Modal */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-2xl w-full max-w-md relative shadow-lg">
+            <button
+              onClick={() => setShowForm(false)}
+              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+            >
+              <X size={20} />
+            </button>
+
+            <h3 className="text-xl font-bold text-orange-700 mb-4">
+              Create a Poll
+            </h3>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const validOptions = form.options.filter(
+                  (o) => o.trim() !== ""
+                );
+                await axios.post(
+                  "http://localhost:4000/api/polls",
+                  { question: form.question, options: validOptions },
+                  { headers: { Authorization: `Bearer ${token}` } }
+                );
+                toast.success("Poll created");
+                setShowForm(false);
+                setForm({ question: "", options: ["", ""] });
+                fetchPolls();
+              }}
+              className="space-y-3"
+            >
+              <input
+                type="text"
+                value={form.question}
+                onChange={(e) =>
+                  setForm({ ...form, question: e.target.value })
+                }
+                placeholder="Enter question"
+                className="w-full border border-orange-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                required
+              />
+
+              {form.options.map((opt, index) => (
+                <input
+                  key={index}
+                  type="text"
+                  value={opt}
+                  onChange={(e) => {
+                    const updated = [...form.options];
+                    updated[index] = e.target.value;
+                    setForm({ ...form, options: updated });
+                  }}
+                  placeholder={`Option ${index + 1}`}
+                  className="w-full border border-orange-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                  required
+                />
+              ))}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setForm({ ...form, options: [...form.options, ""] })
+                }
+                className="text-orange-600 text-sm"
+              >
+                + Add another option
+              </button>
+
+              <button className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-2 rounded-lg font-semibold mt-1">
+                Create Poll
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

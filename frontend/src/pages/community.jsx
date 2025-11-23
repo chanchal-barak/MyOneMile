@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Users, ArrowLeft, UserPlus } from "lucide-react";
+import { Users, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Community() {
@@ -9,11 +9,9 @@ export default function Community() {
     { name: "Go! Ahead", path: "/community/go-ahead", active: true },
     { name: "Discussion Starter", path: "/community/discussion" },
     { name: "Shoutouts & Spotlight", path: "/community/spotlight", active: true },
-    { name: "Trends", path: "/community/trends" },
     { name: "Report", path: "/community/report", active: true },
-    { name: "StoryTelling posts", path: "/community/story" },
+    { name: "Impact Story", path: "/community/story" },
     { name: "Q&A sessions", path: "/community/qa", active: true },
-    { name: "Member Highlights", path: "/community/members" },
     { name: "Community Polls", path: "/community/polls", active: true },
   ];
 
@@ -56,7 +54,7 @@ export default function Community() {
             className="bg-orange-100 p-3 rounded-full border border-orange-400 shadow-md"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
           >
             <Users size={26} className="text-orange-600" />
           </motion.div>
@@ -70,7 +68,7 @@ export default function Community() {
 
       {/* Options */}
       <motion.div
-        className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 w-full max-w-5xl z-10 pb-28"
+        className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 w-full max-w-5xl z-10 pb-16"
         initial="hidden"
         animate="visible"
         variants={{
@@ -81,53 +79,47 @@ export default function Community() {
           },
         }}
       >
-        {options.map((opt, i) => (
-          <motion.div
-            key={i}
-            variants={{
-              hidden: { opacity: 0, y: 25 },
-              visible: { opacity: 1, y: 0 },
-            }}
-            whileHover={{
-              scale: 1.05,
-              boxShadow: '0 8px 20px rgba(255,140,0,0.3)',
-            }}
-            transition={{ type: 'spring', stiffness: 200 }}
-          >
-            <Link
-              to={opt.path}
-              className={`block text-center py-3 sm:py-4 px-4 rounded-xl font-semibold transition-all duration-300 shadow-sm ${
-                opt.active
-                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:shadow-lg hover:brightness-110'
-                  : 'bg-white border border-orange-200 text-gray-700 hover:bg-orange-50 hover:border-orange-300'
-              }`}
+        {options.map((opt, i) => {
+          const isCenterPoll = opt.name === "Community Polls";
+
+          return (
+            <motion.div
+              key={i}
+              className={isCenterPoll ? "lg:col-start-2" : ""}
+              variants={{
+                hidden: { opacity: 0, y: 25 },
+                visible: { opacity: 1, y: 0 },
+              }}
+              whileHover={{
+                scale: 1.05,
+                boxShadow: "0 8px 20px rgba(255,140,0,0.3)",
+              }}
+              transition={{ type: "spring", stiffness: 200 }}
             >
-              {opt.name}
-            </Link>
-          </motion.div>
-        ))}
+              <Link
+                to={opt.path}
+                className={`block text-center py-3 sm:py-4 px-4 rounded-xl font-semibold transition-all duration-300 shadow-sm ${
+                  opt.active
+                    ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:shadow-lg hover:brightness-110"
+                    : "bg-white border border-orange-200 text-gray-700 hover:bg-orange-50 hover:border-orange-300"
+                }`}
+              >
+                {opt.name}
+              </Link>
+            </motion.div>
+          );
+        })}
       </motion.div>
 
       {/* Footer Text */}
       <motion.p
-        className="text-gray-500 text-sm mt-8 z-10 mb-20"
+        className="text-gray-500 text-sm mt-8 z-10 mb-10"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}
       >
         Thanks for engaging with the community 💬
       </motion.p>
-
-      {/* Floating Join Button (Fixed on Top Layer) */}
-      <motion.button
-        onClick={() => navigate('/community/members')}
-        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold px-5 sm:px-6 py-3 rounded-full shadow-lg flex items-center gap-2 hover:scale-105 transition-transform z-50"
-        whileHover={{ y: -4 }}
-        whileTap={{ scale: 0.97 }}
-      >
-        <UserPlus size={20} />
-        Join Community
-      </motion.button>
     </motion.div>
   );
 }

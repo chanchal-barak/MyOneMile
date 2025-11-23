@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import UserProvider from "./context/UserContext";
 
-// Pages
+
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -12,20 +12,19 @@ import Profile from "./pages/Profile";
 import About from "./pages/About";
 import MyPosts from "./pages/MyPosts";
 import MyLikes from "./pages/MyLikes";
-import MyCommunities from "./pages/MyCommunities";
 import EditProfile from "./pages/EditProfile";
+import MyReports from "./pages/MyReports"; 
 
-// Compare Pages
+
 import CompareList from "./pages/CompareList";
 import CompareDetail from "./pages/CompareDetail";
 import CreateCompare from "./pages/CreateCompare";
 
-// Community Pages
+
 import Community from "./pages/community";
 import GoAhead from "./pages/community/GoAhead";
 import Discussion from "./pages/community/Discussion";
 import Spotlight from "./pages/community/Spotlight";
-import Trends from "./pages/community/Trends";
 import Report from "./pages/community/Report";
 import Story from "./pages/community/Story";
 import QA from "./pages/community/QA";
@@ -45,6 +44,16 @@ export default function App() {
             <Route path="/signup" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/about" element={<About />} />
+
+            {/* My Reports (logged-in user only) */}
+            <Route
+              path="/my-reports"
+              element={
+                <PrivateRoute>
+                  <MyReports />
+                </PrivateRoute>
+              }
+            />
 
             {/* Protected Routes */}
             <Route
@@ -71,23 +80,15 @@ export default function App() {
                 </PrivateRoute>
               }
             />
+
             <Route
-              path="/mycommunities"
+              path="/edit-profile"
               element={
                 <PrivateRoute>
-                  <MyCommunities />
+                  <EditProfile />
                 </PrivateRoute>
               }
             />
-            <Route
-            path="/edit-profile"
-            element={
-              <PrivateRoute>
-                <EditProfile />
-              </PrivateRoute>
-            }
-          />
-
 
             {/* Compare Pages */}
             <Route path="/compare" element={<CompareList />} />
@@ -99,7 +100,6 @@ export default function App() {
             <Route path="/community/go-ahead" element={<GoAhead />} />
             <Route path="/community/discussion" element={<Discussion />} />
             <Route path="/community/spotlight" element={<Spotlight />} />
-            <Route path="/community/trends" element={<Trends />} />
             <Route path="/community/report" element={<Report />} />
             <Route path="/community/story" element={<Story />} />
             <Route path="/community/qa" element={<QA />} />

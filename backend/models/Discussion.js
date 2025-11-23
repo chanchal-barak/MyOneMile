@@ -1,10 +1,38 @@
 import mongoose from "mongoose";
 
-const discussionSchema = new mongoose.Schema(
+const { Schema } = mongoose;
+
+const commentSchema = new Schema(
   {
-    title: { type: String, required: true },
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    content: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  { timestamps: true }
+);
+
+const discussionSchema = new Schema(
+  {
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
     content: { type: String, required: true },
-    author: { type: String, default: "Anonymous" },
+
+    likes: { type: Number, default: 0 },
+
+    likedBy: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    comments: [commentSchema],
   },
   { timestamps: true }
 );

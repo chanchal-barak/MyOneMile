@@ -10,7 +10,6 @@ import protect from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// User personal routes
 router.get("/myposts", protect, getMyPosts);
 router.get("/mylikes", protect, getMyLikedPosts);
 router.get("/stats", protect, getUserStats);

@@ -1,35 +1,41 @@
+
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
 const getAvatarByGender = (gender = "male") => {
-  gender = gender.toLowerCase();
+  gender = (gender || "male").toLowerCase();
   if (gender === "female") return "https://avatar.iran.liara.run/public/girl?random=1";
   if (gender === "male") return "https://avatar.iran.liara.run/public/boy?random=1";
-  return "https://avatar.iran.liara.run/public"; 
+  return "https://avatar.iran.liara.run/public";
 };
 
 export const register = async (req, res) => {
   try {
-    const { name, email, password, phone, birth, gender, avatar } = req.body;
+    const { username, name, email, password, phone, birth, gender } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "Please fill all required fields" });
+    if (!username || !name || !email || !password) {
+      return res.status(400).json({ message: "username, name, email and password are required" });
     }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
+    const emailNorm = email.toLowerCase().trim();
+    const usernameNorm = username.trim();
+
+    const existingEmail = await User.findOne({ email: emailNorm });
+    if (existingEmail) return res.status(400).json({ message: "Email already registered" });
+
+    const existingUsername = await User.findOne({ username: usernameNorm });
+    if (existingUsername) return res.status(400).json({ message: "Username already taken" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    
-    const avatarUrl = avatar || getAvatarByGender(gender);
+    const avatarUrl = getAvatarByGender(gender);
 
     const user = await User.create({
-      name,
-      email,
+      username: usernameNorm,
+      name: name.trim(),
+      email: emailNorm,
       password: hashedPassword,
       phone,
       birth,
@@ -44,6 +50,7 @@ export const register = async (req, res) => {
       token,
       user: {
         _id: user._id,
+        username: user.username,
         name: user.name,
         email: user.email,
         phone: user.phone,
@@ -53,28 +60,35 @@ export const register = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Error in registerUser:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error(" Register error:", err);
+
+    if (err.code === 11000) {
+      const key = Object.keys(err.keyPattern || {})[0];
+      return res.status(400).json({ message: `${key} already exists` });
+    }
+
+    res.status(500).json({ message: "Server error while registering" });
   }
 };
 
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    if (!email || !password) return res.status(400).json({ message: "Email and password required" });
 
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
     const token = generateToken(user._id);
-
     res.json({
       message: "Login successful",
       token,
       user: {
         _id: user._id,
+        username: user.username,
         name: user.name,
         email: user.email,
         phone: user.phone,
@@ -84,8 +98,8 @@ export const login = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Error in loginUser:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error(" Login error:", err);
+    res.status(500).json({ message: "Server error while logging in" });
   }
 };
 
@@ -94,74 +108,21 @@ export const getUserProfile = async (req, res) => {
     const user = await User.findById(req.user._id).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
-
 export const updateProfile = async (req, res) => {
   try {
-    const userId = req.user._id;
     const updates = req.body;
     if (req.file) updates.avatar = `uploads/${req.file.filename}`;
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true }).select("-password");
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+    }).select("-password");
+
     res.json({ message: "Profile updated", user: updatedUser });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-export const likeIssue = async (req, res) => {
-  try {
-    const userId = req.user; 
-    const issue = await Issue.findById(req.params.id);
-    if (!issue) return res.status(404).json({ message: "Issue not found" });
-
-    const alreadyLiked = issue.likes.includes(userId);
-    if (alreadyLiked) {
-      issue.likes = issue.likes.filter((id) => id.toString() !== userId);
-    } else {
-      issue.likes.push(userId);
-    }
-
-    await issue.save();
-    res.json({ likes: issue.likes.length, liked: !alreadyLiked });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error updating like" });
-  }
-};
-
-export const addComment = async (req, res) => {
-  try {
-    const issue = await Issue.findById(req.params.id);
-    if (!issue) return res.status(404).json({ message: "Issue not found" });
-
-    const newComment = {
-      user: req.user,
-      text: req.body.text,
-      createdAt: new Date(),
-    };
-
-    issue.comments.push(newComment);
-    await issue.save();
-
-    res.status(201).json({ message: "Comment added", comment: newComment });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error adding comment" });
-  }
-};
-
-export const getComments = async (req, res) => {
-  try {
-    const issue = await Issue.findById(req.params.id).populate("comments.user", "name email");
-    if (!issue) return res.status(404).json({ message: "Issue not found" });
-
-    res.json(issue.comments);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error fetching comments" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
