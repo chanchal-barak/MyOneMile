@@ -18,8 +18,6 @@ import areaRoutes from "./routes/areaRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import spotlightRoutes from "./routes/spotlightRoutes.js";
-import trendRoutes from "./routes/trendRoutes.js";
-import memberRoutes from "./routes/memberRoutes.js";
 import storyRoutes from "./routes/storyRoutes.js";
 
 dotenv.config();
@@ -83,8 +81,6 @@ app.use("/api/areas", areaRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/spotlights", spotlightRoutes);
-app.use("/api/trend", trendRoutes);
-app.use("/api/member", memberRoutes);
 app.use("/api/stories", storyRoutes);
 
 
