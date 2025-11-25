@@ -87,7 +87,7 @@ export default function About() {
         </motion.div>
 
         <p className="text-gray-700 leading-relaxed text-base">
-          <strong className="text-indigo-700">Meri Awaaj</strong> is a civic
+          <strong className="text-indigo-700">MyOneMile</strong> is a civic
           engagement platform that empowers citizens to voice their concerns,
           solve local issues, and make communities stronger. Together, we build
           transparent and connected neighborhoods where every voice matters. 🌍
