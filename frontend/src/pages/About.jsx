@@ -7,7 +7,7 @@ export default function About() {
 
   const team = [
     {
-      name: "Sandeep Man",
+      name: "Sandeep Mann",
       role: "Owner",
       img: "https://cdn-icons-png.flaticon.com/512/4140/4140037.png",
       email: "thinkvast@gmail.com",
@@ -26,7 +26,7 @@ export default function About() {
     },
     {
       name: "Himanshi Kashyap",
-      role: "UI/UX Designer",
+      role: "Full-Stack Developer",
       img: "https://cdn-icons-png.flaticon.com/512/4140/4140047.png",
       email: "kashyaphimanshi10@gmail.com",
     },

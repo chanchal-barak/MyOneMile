@@ -4,10 +4,9 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useUser } from "../context/UserContext";
-import { FaFacebookF, FaGoogle, FaApple } from "react-icons/fa";
 
 export default function Login() {
-  const [identifier, setIdentifier] = useState(""); // username OR email
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const { setUser } = useUser();
@@ -16,7 +15,7 @@ export default function Login() {
     e.preventDefault();
     try {
       const res = await axios.post("http://localhost:4000/api/auth/login", {
-        identifier,
+        email: identifier,
         password,
       });
 
@@ -60,21 +59,13 @@ export default function Login() {
           />
 
           {/* Password */}
-          <div className="relative">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-purple-400 outline-none"
-            />
-            <span
-              onClick={() => navigate("/forgot-password")}
-              className="absolute right-3 top-3 text-sm text-purple-600 font-medium cursor-pointer"
-            >
-              Forgot Password?
-            </span>
-          </div>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-purple-400 outline-none"
+          />
 
           {/* Login Button */}
           <button

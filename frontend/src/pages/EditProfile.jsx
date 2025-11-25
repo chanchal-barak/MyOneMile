@@ -17,9 +17,10 @@ export default function EditProfile() {
     phone: "",
     birth: "",
     gender: "",
+    avatar: "",
   });
 
-  // Load user data into the form
+  // Load user data into form
   useEffect(() => {
     if (user) {
       setForm({
@@ -29,6 +30,7 @@ export default function EditProfile() {
         phone: user.phone || "",
         birth: user.birth ? user.birth.split("T")[0] : "",
         gender: user.gender || "",
+        avatar: user.avatar || "",
       });
     }
   }, [user]);
@@ -37,33 +39,67 @@ export default function EditProfile() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // NEW --- Change Avatar Handler
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("avatar", file);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.put(
+        "http://localhost:4000/api/user/update-avatar",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      setUser(res.data.user);
+      setForm((prev) => ({ ...prev, avatar: res.data.user.avatar }));
+
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+      toast.success("Avatar updated!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Avatar upload failed.");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
       const res = await axios.put(
         "http://localhost:4000/api/user/update-profile",
-        form,
+        {
+          name: form.name,
+          username: form.username,
+          email: form.email,
+          phone: form.phone,
+          birth: form.birth,
+          gender: form.gender,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setUser(res.data.user);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      toast.success("Profile updated successfully!");
+      // Keep avatar safe
+      const updatedUser = { ...res.data.user, avatar: user.avatar };
+
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      toast.success("Profile updated!");
+
       navigate("/profile");
     } catch (err) {
       console.error(err);
-      toast.error("Failed to update profile");
+      toast.error("Update failed.");
     }
-  };
-
-  const getAvatar = () => {
-    const gender = form.gender?.toLowerCase();
-    if (gender === "female")
-      return "https://cdn-icons-png.flaticon.com/512/4140/4140046.png";
-    if (gender === "male")
-      return "https://cdn-icons-png.flaticon.com/512/4140/4140048.png";
-    return "https://cdn-icons-png.flaticon.com/512/9131/9131529.png";
   };
 
   return (
@@ -84,58 +120,45 @@ export default function EditProfile() {
         <div className="flex flex-col items-center">
           <div className="relative mb-4">
             <img
-              src={getAvatar()}
+              src={form.avatar || user?.avatar}
               alt="Avatar"
               className="w-24 h-24 rounded-full border-4 border-purple-400 object-cover shadow-md"
             />
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              className="absolute bottom-1 right-1 bg-purple-600 p-2 rounded-full text-white"
-            >
+
+            {/* Change Avatar Button */}
+            <label className="absolute bottom-1 right-1 bg-purple-600 p-2 rounded-full text-white cursor-pointer">
               <User size={14} />
-            </motion.div>
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={handleAvatarChange}
+              />
+            </label>
           </div>
-          <h2 className="text-xl font-bold text-purple-800 mb-4">Edit Profile</h2>
+
+          <h2 className="text-xl font-bold text-purple-800 mb-4">
+            Edit Profile
+          </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <InputField label="Full Name" name="name" value={form.name} onChange={handleChange} />
+          <InputField label="Username" name="username" value={form.username} onChange={handleChange} />
+
+          <InputField type="email" label="Email" name="email" value={form.email} onChange={handleChange} />
+          <InputField label="Phone Number" name="phone" value={form.phone} onChange={handleChange} />
+
           <InputField
-            label="Full Name"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-          />
-          <InputField
-            label="Username"
-            name="username"
-            value={form.username}
-            onChange={handleChange}
-          />
-          <InputField
-            label="Email"
-            name="email"
-            value={form.email}
-            onChange={handleChange}
-            type="email"
-          />
-          <InputField
-            label="Phone Number"
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-          />
-          <InputField
+            type="date"
             label="Birth Date"
             name="birth"
             value={form.birth}
             onChange={handleChange}
-            type="date"
           />
 
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Gender
-            </label>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Gender</label>
             <select
               name="gender"
               value={form.gender}
@@ -156,13 +179,6 @@ export default function EditProfile() {
             Save Changes
           </button>
         </form>
-
-        <button
-          className="flex items-center justify-center gap-2 mt-4 w-full bg-gray-200 py-2 rounded-xl hover:bg-gray-300 transition text-gray-700 font-medium"
-          onClick={() => toast("Password change coming soon 🔒")}
-        >
-          <Lock size={16} /> Change Password
-        </button>
       </motion.div>
     </div>
   );

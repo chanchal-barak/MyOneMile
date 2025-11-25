@@ -132,7 +132,7 @@ export default function Profile() {
           </motion.button>
         </motion.div>
 
-        <h2 className="text-2xl font-extrabold text-purple-800">{user.name}</h2>
+        <h2 className="text-2xl font-extrabold text-purple-800">@{user.username}</h2>
         <p className="text-gray-500">{user.email}</p>
 
         {/* 📊 Stats */}
@@ -254,7 +254,6 @@ export default function Profile() {
   );
 }
 
-/* --- Reusable Components --- */
 
 function ProfileRow({ icon, label, onClick }) {
   return (
