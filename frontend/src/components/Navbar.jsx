@@ -44,8 +44,6 @@ export default function Navbar() {
     toast.success("Logged out successfully");
     navigate("/login");
   };
-
-  // 🧍‍♀️ Avatar logic (same as Profile)
   const getAvatar = () => {
     if (user?.avatar) return user.avatar;
     const gender = user?.gender?.toLowerCase();
@@ -76,7 +74,7 @@ export default function Navbar() {
             to="/"
             className="text-xl font-extrabold text-purple-700 tracking-wide hover:text-purple-800 transition"
           >
-            MERI AWAAJ
+            MyOneMile
           </Link>
         </div>
 

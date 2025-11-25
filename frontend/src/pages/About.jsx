@@ -7,6 +7,12 @@ export default function About() {
 
   const team = [
     {
+      name: "Sandeep Man",
+      role: "Owner",
+      img: "https://cdn-icons-png.flaticon.com/512/4140/4140037.png",
+      email: "thinkvast@gmail.com",
+    },
+    {
       name: "Chanchal",
       role: "Full-Stack Developer",
       img: "https://cdn-icons-png.flaticon.com/512/4140/4140040.png",
@@ -24,9 +30,9 @@ export default function About() {
       img: "https://cdn-icons-png.flaticon.com/512/4140/4140047.png",
       email: "kashyaphimanshi10@gmail.com",
     },
+
   ];
 
-  // helper to open Gmail compose in a new tab (works if user uses Gmail)
   const gmailComposeUrl = (email) =>
     `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}`;
 
@@ -88,10 +94,7 @@ export default function About() {
         </p>
       </motion.div>
 
-      {/* ------------------------------------------------------------- */}
-      {/*                 PREMIUM TEAM SECTION                         */}
-      {/* ------------------------------------------------------------- */}
-
+      {/* Core Team Section */}
       <motion.div
         className="mt-16 max-w-6xl w-full relative z-10"
         initial={{ opacity: 0, y: 40 }}
@@ -102,52 +105,44 @@ export default function About() {
           <Users className="text-indigo-600" /> Our Core Team
         </h3>
 
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        {/* MAKE SMALL CARDS + ALL IN ONE LINE */}
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {team.map((member, index) => (
             <motion.div
               key={index}
-              className="p-6 bg-white/60 backdrop-blur-xl rounded-3xl shadow-xl border border-indigo-100 
-                         text-center hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 
-                         cursor-pointer relative overflow-hidden"
-              whileHover={{ scale: 1.05 }}
+              className="p-4 bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg 
+              border border-indigo-100 text-center hover:shadow-xl hover:-translate-y-1 
+              transition-all duration-300 cursor-pointer relative overflow-hidden"
+              whileHover={{ scale: 1.04 }}
             >
-              {/* Soft Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-200/60 via-white/40 to-indigo-100/60 
-                              rounded-3xl opacity-0 hover:opacity-40 transition duration-300 pointer-events-none" />
+              {/* Glow */}
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-200/40 via-white/30 to-indigo-100/40 
+              rounded-2xl opacity-0 hover:opacity-30 transition duration-300 pointer-events-none" />
 
-              {/* Floating Image */}
               <motion.img
                 src={member.img}
                 alt={member.name}
-                className="w-24 h-24 mx-auto rounded-full border-4 border-indigo-200 shadow-md object-cover mb-4"
-                animate={{ y: [0, -4, 0] }}
+                className="w-16 h-16 mx-auto rounded-full border-2 border-indigo-200 shadow-sm object-cover mb-3"
+                animate={{ y: [0, -3, 0] }}
                 transition={{ repeat: Infinity, duration: 3 }}
               />
 
-              <h4 className="text-xl font-semibold text-gray-800">
-                {member.name}
-              </h4>
-              <p className="text-indigo-600 font-medium text-sm mt-1">
-                {member.role}
-              </p>
+              <h4 className="text-lg font-semibold text-gray-800">{member.name}</h4>
+              <p className="text-indigo-600 font-medium text-xs mt-1">{member.role}</p>
 
-              {/* Email link - opens Gmail compose in new tab */}
               <a
                 href={gmailComposeUrl(member.email)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-3 text-sm text-indigo-700 font-medium hover:underline"
-                title={`Email ${member.name}`}
+                className="inline-flex items-center gap-1 mt-2 text-xs text-indigo-700 font-medium hover:underline"
               >
-                <Mail size={14} className="text-indigo-600" />
+                <Mail size={12} className="text-indigo-600" />
                 {member.email}
               </a>
             </motion.div>
           ))}
         </div>
       </motion.div>
-
-      {/* Contact Section */}
       <motion.div
         className="bg-white shadow-md rounded-2xl p-6 w-full max-w-md mt-12 border border-indigo-100 relative z-10"
         initial={{ opacity: 0, y: 30 }}
@@ -155,31 +150,23 @@ export default function About() {
         transition={{ delay: 0.4 }}
       >
         <h3 className="text-indigo-700 font-bold mb-3 text-lg">Help & Support</h3>
-        <div className="space-y-2 text-gray-700 text-sm">
+
+        <div className="space-y-3 text-gray-700 text-sm text-center">
           <p className="flex items-center justify-center gap-2">
-            <Phone size={16} className="text-indigo-500" /> +91 71XX-XXXX-XX
+            <Phone size={16} className="text-indigo-500" /> +91 9891369629
           </p>
 
-          {/* Team emails (linked to Gmail compose) */}
-          <div className="flex flex-col items-center gap-1">
-            {team.map((member) => (
-              <a
-                key={member.email}
-                href={gmailComposeUrl(member.email)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-indigo-600 hover:underline text-sm"
-                title={`Email ${member.name} via Gmail`}
-              >
-                <Mail size={14} className="text-indigo-500" />
-                {member.name} - {member.email}
-              </a>
-            ))}
-          </div>
+          <a
+            href={gmailComposeUrl("Happytohelp@myonemile.com")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-indigo-600 hover:underline text-sm justify-center"
+          >
+            <Mail size={16} className="text-indigo-500" />
+            Happytohelp@myonemile.com
+          </a>
         </div>
       </motion.div>
-
-      {/* Terms Section */}
       <motion.div
         className="w-full max-w-md mt-10 mb-8 relative z-10"
         initial={{ opacity: 0, y: 30 }}
@@ -202,3 +189,5 @@ export default function About() {
     </motion.div>
   );
 }
+
+

@@ -85,26 +85,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* OR login with */}
-        <div className="mt-6 flex items-center">
-          <div className="flex-grow border-t border-gray-300"></div>
-          <span className="px-3 text-gray-500 text-sm">Or Login with</span>
-          <div className="flex-grow border-t border-gray-300"></div>
-        </div>
-
-        {/* Social Buttons */}
-        <div className="flex justify-center gap-6 mt-4">
-          <button className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50">
-            <FaFacebookF className="text-blue-600 text-xl" />
-          </button>
-          <button className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50">
-            <FaGoogle className="text-red-500 text-xl" />
-          </button>
-          <button className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50">
-            <FaApple className="text-black text-xl" />
-          </button>
-        </div>
-
         {/* Register Redirect */}
         <p className="text-center text-sm text-gray-500 mt-6">
           Don’t have an account?{" "}
