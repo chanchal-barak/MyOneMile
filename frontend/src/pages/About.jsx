@@ -128,7 +128,7 @@ export default function About() {
               />
 
               <h4 className="text-lg font-semibold text-gray-800">{member.name}</h4>
-              <p className="text-indigo-600 font-medium text-xs mt-1">{member.role}</p>
+              <p className="text-gray-600 font-medium text-xs mt-1">{member.role}</p>
 
               <a
                 href={gmailComposeUrl(member.email)}
