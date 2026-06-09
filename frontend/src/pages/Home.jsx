@@ -14,7 +14,7 @@ export default function Home() {
 
   const user = JSON.parse(localStorage.getItem("user"));
   const token = localStorage.getItem("token");
-  const BACKEND_URL = "http://localhost:4000";
+  const BACKEND_URL = "https://myonemile.onrender.com";
 
   useEffect(() => {
     const socket = io(BACKEND_URL, { transports: ["websocket"] });
