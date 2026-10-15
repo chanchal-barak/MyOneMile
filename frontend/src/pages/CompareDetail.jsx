@@ -1,226 +1,244 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
-import { FaHeart, FaRegHeart, FaArrowLeft, FaTrash } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
 
-export default function CompareDetail() {
-  const { id } = useParams();
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Plus, ThumbsUp, Search, ArrowDownAZ } from "lucide-react";
+import { motion } from "framer-motion";
+import api from "../api/axios";
+
+export default function CompareList() {
+  const [compares, setCompares] = useState([]);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const navigate = useNavigate();
-  const [compare, setCompare] = useState(null);
-  const [user, setUser] = useState(null);
-
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    setUser(storedUser);
+    let isMounted = true;
 
-    axios
-      .get(`http://localhost:4000/api/compare/${id}`)
-      .then((res) => setCompare(res.data))
-      .catch((err) => console.error("❌ Fetch Compare Error:", err));
-  }, [id]);
+    const fetchCompares = async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-  const handleVote = async (categoryIndex, area) => {
-    if (!user) {
-      alert("Please login to vote!");
-      navigate("/login");
-      return;
-    }
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.post(
-        `http://localhost:4000/api/compare/${id}/vote`,
-        { categoryIndex, area },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setCompare(res.data);
-    } catch (err) {
-      console.error("❌ Vote Error:", err.message);
-    }
-  };
+        const res = await api.get("/api/compare");
 
-  const handleLike = async () => {
-    if (!user) {
-      alert("Please login to like!");
-      navigate("/login");
-      return;
-    }
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.post(
-        `http://localhost:4000/api/compare/${id}/like`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setCompare(res.data);
-    } catch (err) {
-      console.error("❌ Like Error:", err.message);
-    }
-  };
+        if (!isMounted) return;
 
-  const deleteCompare = async () => {
-    try {
-      const token = localStorage.getItem("token");
+        const data = Array.isArray(res.data)
+          ? res.data
+          : res.data?.compares;
 
-      await axios.delete(`http://localhost:4000/api/compare/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
-      });
+        if (!Array.isArray(data)) {
+          throw new Error("Unexpected response from the server.");
+        }
 
-      setShowDeleteConfirm(false);
-      setDeleteSuccess(true);
+        setCompares(data);
+      } catch (err) {
+        if (!isMounted) return;
 
-      setTimeout(() => {
-        navigate("/compare");
-      }, 700);
-    } catch (err) {
-      console.error("❌ Delete failed:", err.response?.data || err);
-      alert("Delete failed. Make sure you are the owner.");
-    }
-  };
+        console.error("Fetch Compare Error:", err);
 
-  if (!compare)
-    return (
-      <div className="text-center mt-20 text-green-700 font-semibold">
-        Loading Comparison...
-      </div>
+        setError(
+          err.response?.data?.message ||
+            "Unable to load comparisons. Please try again."
+        );
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCompares();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Search and sorting
+  const filteredCompares = useMemo(() => {
+    let filtered = compares.filter((c) =>
+      `${c.area1 || ""} ${c.area2 || ""}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase())
     );
 
-  const userId = user?._id;
-  const liked = compare.likes?.includes(userId);
-  const isOwner = compare.createdBy === userId;
+    if (sortBy === "likes") {
+      return filtered.sort(
+        (a, b) => (b.likes?.length || 0) - (a.likes?.length || 0)
+      );
+    }
+
+    // Use actual creation dates when available.
+    if (
+      filtered.length > 0 &&
+      filtered.every((item) => item.createdAt)
+    ) {
+      return filtered.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() -
+          new Date(a.createdAt).getTime()
+      );
+    }
+
+    // Fallback to the original newest-first behavior.
+    return filtered.reverse();
+  }, [compares, search, sortBy]);
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-      className="min-h-screen bg-gradient-to-b from-green-50 to-green-100 p-6 flex flex-col items-center relative"
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-gradient-to-b from-green-50 to-green-100 p-8 relative"
     >
-      {/* Back */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => navigate(-1)}
-        className="flex items-center text-green-700 font-semibold mb-4 bg-white px-4 py-2 rounded-full shadow hover:shadow-md transition-all"
-      >
-        <FaArrowLeft className="mr-2" /> Back
-      </motion.button>
-
-      {/* Title */}
-      <h2 className="text-3xl font-bold text-green-800 mb-4 text-center">
-        {compare.area1} <span className="text-green-600">vs</span> {compare.area2}
-      </h2>
-
-      {/* Like */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleLike}
-        className="flex items-center gap-2 bg-white border border-green-300 px-5 py-2 rounded-full shadow-md text-green-700 font-semibold mb-6 hover:bg-green-100 transition-all"
-      >
-        {liked ? (
-          <FaHeart className="text-green-600 text-xl" />
-        ) : (
-          <FaRegHeart className="text-green-600 text-xl" />
-        )}
-        {compare.likes?.length || 0} Likes
-      </motion.button>
-
-      {/* Delete Button */}
-      {isOwner && (
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowDeleteConfirm(true)}
-          className="flex items-center gap-2 bg-red-600 text-white px-5 py-2 rounded-full shadow-lg mb-6 hover:bg-red-700 transition-all"
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-10 gap-6">
+        <motion.h2
+          initial={{ x: -20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-4xl font-extrabold text-green-700 tracking-tight"
         >
-          <FaTrash /> Delete Comparison
+          Compare Areas
+        </motion.h2>
+
+        {/* Create Button - Desktop */}
+        <motion.button
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate("/compare/new")}
+          className="hidden md:flex items-center gap-2 bg-green-600 text-white px-5 py-2 rounded-full shadow-lg hover:bg-green-700 transition-all"
+        >
+          <Plus size={18} /> New
         </motion.button>
-      )}
+      </div>
 
-      {/* Categories */}
-      <motion.div className="w-full max-w-2xl bg-white border border-green-200 rounded-2xl shadow-xl p-6">
-        {compare.categories.map((cat, i) => {
-          const userVote = cat.votes.find(
-            (v) => v.user === userId || v.user?._id === userId
-          );
+      {/* Search and Sort Controls */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="bg-white/70 backdrop-blur-md p-4 rounded-xl shadow flex flex-col md:flex-row items-center justify-between gap-4 mb-10 border border-green-200"
+      >
+        {/* Search */}
+        <div className="flex items-center w-full md:w-1/2 bg-white rounded-lg px-3 py-2 border border-green-200 shadow-sm focus-within:ring-2 focus-within:ring-green-400 transition-all">
+          <Search className="text-green-500 mr-2" size={18} />
 
-          return (
-            <div key={i} className="flex justify-between items-center border-b border-green-100 py-3">
-              {/* Area 1 */}
-              <button
-                onClick={() => handleVote(i, "area1")}
-                className="flex items-center gap-1 w-1/3 justify-center"
-              >
-                {userVote?.area === "area1" ? (
-                  <FaHeart className="text-green-600 text-xl" />
-                ) : (
-                  <FaRegHeart className="text-green-600 text-xl" />
-                )}
-                <span className="text-green-700 font-medium">{cat.area1Votes}</span>
-              </button>
+          <input
+            type="text"
+            placeholder="Search by area name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full outline-none bg-transparent text-gray-700 placeholder-gray-400"
+          />
+        </div>
 
-              {/* Name */}
-              <p className="font-semibold text-green-800 w-1/3 text-center text-lg">
-                {cat.name}
-              </p>
+        {/* Sort */}
+        <div className="flex items-center gap-2">
+          <ArrowDownAZ size={18} className="text-green-600" />
 
-              {/* Area 2 */}
-              <button
-                onClick={() => handleVote(i, "area2")}
-                className="flex items-center gap-1 w-1/3 justify-center"
-              >
-                {userVote?.area === "area2" ? (
-                  <FaHeart className="text-green-600 text-xl" />
-                ) : (
-                  <FaRegHeart className="text-green-600 text-xl" />
-                )}
-                <span className="text-green-700 font-medium">{cat.area2Votes}</span>
-              </button>
-            </div>
-          );
-        })}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-white border border-green-300 rounded-lg px-3 py-2 text-gray-700 focus:ring-2 focus:ring-green-400 focus:outline-none"
+          >
+            <option value="newest">Newest</option>
+            <option value="likes">Most Liked</option>
+          </select>
+        </div>
       </motion.div>
 
-      {/* Delete Confirm Popup */}
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <motion.div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-2xl shadow-xl w-80 text-center">
-              <h3 className="text-lg font-bold text-red-600 mb-3">Delete Comparison?</h3>
-              <p className="text-gray-600 mb-4">This action cannot be undone.</p>
+      {/* Comparison Cards */}
+      {loading ? (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-green-700 text-center text-lg mt-20"
+        >
+          Loading comparisons...
+        </motion.p>
+      ) : error ? (
+        <div className="text-center mt-20">
+          <p className="text-red-600 text-lg mb-4">{error}</p>
 
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="px-4 py-2 bg-gray-200 rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={deleteCompare}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg"
-                >
-                  Delete
-                </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-green-600 text-white px-5 py-2 rounded-lg shadow hover:bg-green-700 transition"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : filteredCompares.length === 0 ? (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-gray-500 text-center text-lg mt-20"
+        >
+          No results found. Try a different search or click{" "}
+          <span className="font-semibold text-green-600">New</span> to create one!
+        </motion.p>
+      ) : (
+        <motion.div
+          layout
+          className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {filteredCompares.map((c, index) => (
+            <motion.div
+              key={c._id}
+              layout
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05, duration: 0.4 }}
+              whileHover={{ scale: 1.03, y: -3 }}
+              className="p-5 bg-white border border-green-200 rounded-2xl shadow-md hover:shadow-xl cursor-pointer transition-all backdrop-blur-sm"
+              onClick={() => navigate(`/compare/${c._id}`)}
+            >
+              <div className="flex justify-between items-center gap-3">
+                <h3 className="text-xl font-semibold text-green-800">
+                  {c.area1}{" "}
+                  <span className="text-green-500">vs</span>{" "}
+                  {c.area2}
+                </h3>
+
+                <div className="flex items-center text-green-600 font-medium shrink-0">
+                  <ThumbsUp size={16} className="mr-1" />
+                  {c.likes?.length || 0}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Delete Success */}
-      <AnimatePresence>
-        {deleteSuccess && (
-          <motion.div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-4 rounded-xl shadow-xl flex items-center gap-3">
-            <FaTrash /> <span>Deleted Successfully</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <p className="text-gray-600 mt-2 text-sm">
+                {c.categories?.length || 0} categories
+              </p>
+
+              {/* Underline Animation */}
+              <motion.div
+                initial={{ width: 0 }}
+                whileHover={{ width: "100%" }}
+                transition={{ duration: 0.4 }}
+                className="h-1 mt-3 rounded-full bg-green-400"
+              />
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      {/* Floating Create Button - Mobile */}
+      <motion.button
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        whileHover={{ scale: 1.15, rotate: 10 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => navigate("/compare/new")}
+        aria-label="Create a new comparison"
+        className="md:hidden fixed bottom-8 right-8 bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700 transition-all animate-pulse"
+      >
+        <Plus size={22} />
+      </motion.button>
     </motion.div>
   );
 }

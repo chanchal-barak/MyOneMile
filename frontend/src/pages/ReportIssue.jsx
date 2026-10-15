@@ -4,7 +4,7 @@ import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, UploadCloud, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
+const API_URL = import.meta.env.VITE_API_BASE;
 export default function ReportIssue() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -16,27 +16,77 @@ export default function ReportIssue() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   const navigate = useNavigate();
-
   const validate = () => {
-    if (!title.trim()) return toast.error("Title is required");
-    if (!description.trim()) return toast.error("Description is required");
-    if (!location.trim()) return toast.error("Location is required");
-    if (!category) return toast.error("Please select a category");
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return false;
+    }
+
+    if (!description.trim()) {
+      toast.error("Description is required");
+      return false;
+    }
+
+    if (!location.trim()) {
+      toast.error("Location is required");
+      return false;
+    }
+
+    if (!category) {
+      toast.error("Please select a category");
+      return false;
+    }
+
     return true;
   };
 
   const onFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image");
+      e.target.value = "";
+      return;
+    }
+
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+
     setImageFile(file);
     setPreview(URL.createObjectURL(file));
   };
 
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setLocation("");
+    setCategory("");
+    setImageFile(null);
+
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+
+    setPreview(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!validate()) return;
 
+    if (!API_URL) {
+      toast.error("Backend URL is not configured");
+      console.error(
+        "VITE_API_BASE is missing. Configure it in the frontend .env file and Vercel environment variables."
+      );
+      return;
+    }
+
     const token = localStorage.getItem("token");
+
     if (!token) {
       toast.error("Please login to submit an issue");
       navigate("/login");
@@ -44,44 +94,58 @@ export default function ReportIssue() {
     }
 
     const fd = new FormData();
-    fd.append("title", title);
-    fd.append("description", description);
-    fd.append("location", location);
+    fd.append("title", title.trim());
+    fd.append("description", description.trim());
+    fd.append("location", location.trim());
     fd.append("category", category);
-    if (imageFile) fd.append("image", imageFile);
+
+    if (imageFile) {
+      fd.append("image", imageFile);
+    }
 
     try {
       setLoading(true);
       setUploadProgress(0);
 
-      await axios.post("http://localhost:4000/api/issues", fd, {
+      await axios.post(`${API_URL}/api/issues`, fd, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
         },
         onUploadProgress: (progressEvent) => {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          setUploadProgress(progress);
+          if (progressEvent.total) {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+
+            setUploadProgress(progress);
+          }
         },
       });
 
       setShowSuccess(true);
+      resetForm();
+
       setTimeout(() => {
         setShowSuccess(false);
         navigate("/");
       }, 2000);
-
-      setTitle("");
-      setDescription("");
-      setLocation("");
-      setCategory("");
-      setImageFile(null);
-      setPreview(null);
     } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Submit failed");
+      console.error(
+        "Submit issue error:",
+        err.response?.data || err.message || err
+      );
+
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        toast.error("Your session may have expired. Please log in again.");
+      } else if (err.response?.data?.message) {
+        toast.error(err.response.data.message);
+      } else if (err.response) {
+        toast.error(`Failed to submit issue (${err.response.status})`);
+      } else {
+        toast.error(
+          "Unable to connect to the server. Please try again later."
+        );
+      }
     } finally {
       setLoading(false);
       setUploadProgress(0);
@@ -90,20 +154,20 @@ export default function ReportIssue() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 via-blue-100 to-blue-200 p-6 relative overflow-hidden">
-
       {/* Floating Glow Blobs */}
       <motion.div
         className="absolute top-10 left-10 w-44 h-44 bg-blue-300 rounded-full blur-3xl opacity-25"
         animate={{ y: [0, 20, 0], scale: [1, 1.05, 1] }}
         transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
       />
+
       <motion.div
         className="absolute bottom-10 right-10 w-56 h-56 bg-sky-400 rounded-full blur-3xl opacity-25"
         animate={{ y: [0, -20, 0], scale: [1, 1.1, 1] }}
         transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* ✅ Success Popup */}
+      {/* Success Popup */}
       <AnimatePresence>
         {showSuccess && (
           <motion.div
@@ -125,8 +189,12 @@ export default function ReportIssue() {
                 transition={{ delay: 0.2, type: "spring" }}
                 className="flex justify-center mb-4"
               >
-                <CheckCircle2 size={70} className="text-blue-600 drop-shadow-md" />
+                <CheckCircle2
+                  size={70}
+                  className="text-blue-600 drop-shadow-md"
+                />
               </motion.div>
+
               <motion.h3
                 className="text-xl font-semibold text-blue-700"
                 initial={{ y: 10, opacity: 0 }}
@@ -135,13 +203,16 @@ export default function ReportIssue() {
               >
                 Issue Submitted Successfully!
               </motion.h3>
-              <p className="text-gray-500 mt-1">Redirecting to home...</p>
+
+              <p className="text-gray-500 mt-1">
+                Redirecting to home...
+              </p>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 🧾 Form Card */}
+      {/* Form Card */}
       <motion.div
         className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-blue-100 p-8 sm:p-10 w-full max-w-2xl relative"
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
@@ -150,14 +221,18 @@ export default function ReportIssue() {
       >
         <div className="flex items-center justify-between mb-8">
           <button
+            type="button"
             onClick={() => navigate(-1)}
             className="flex items-center text-blue-600 hover:text-blue-700 font-medium transition"
           >
-            <ArrowLeft size={20} className="mr-1" /> Back
+            <ArrowLeft size={20} className="mr-1" />
+            Back
           </button>
+
           <h2 className="text-2xl sm:text-3xl font-bold text-blue-700 text-center flex-1">
             Report an Issue
           </h2>
+
           <div className="w-10" />
         </div>
 
@@ -172,59 +247,98 @@ export default function ReportIssue() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Title"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition"
+            required
+            disabled={loading}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition disabled:opacity-60"
           />
+
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows="4"
+            rows={4}
             placeholder="Describe the issue..."
-            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition"
+            required
+            disabled={loading}
+            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition disabled:opacity-60"
           />
+
           <div className="grid sm:grid-cols-2 gap-4">
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Location (area / city)"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition"
+              required
+              disabled={loading}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition disabled:opacity-60"
             />
+
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition"
+              required
+              disabled={loading}
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition disabled:opacity-60"
             >
               <option value="">Select category</option>
-              <option>Road</option>
-              <option>Garbage</option>
-              <option>Water</option>
-              <option>Electricity</option>
-              <option>Other</option>
+              <option value="Road">Road</option>
+              <option value="Garbage">Garbage</option>
+              <option value="Water">Water</option>
+              <option value="Electricity">Electricity</option>
+              <option value="Other">Other</option>
             </select>
           </div>
 
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-100 transition">
               <UploadCloud size={18} />
-              <span>Choose Photo</span>
+              <span>{imageFile ? "Change Photo" : "Choose Photo"}</span>
+
               <input
                 type="file"
                 accept="image/*"
                 onChange={onFileChange}
+                disabled={loading}
                 className="hidden"
               />
             </label>
+
             {preview && (
-              <img
-                src={preview}
-                alt="preview"
-                className="h-20 w-20 object-cover rounded-lg border border-gray-200 shadow-sm"
-              />
+              <div className="flex items-center gap-3">
+                <img
+                  src={preview}
+                  alt="Selected issue"
+                  className="h-20 w-20 object-cover rounded-lg border border-gray-200 shadow-sm"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (preview) {
+                      URL.revokeObjectURL(preview);
+                    }
+
+                    setPreview(null);
+                    setImageFile(null);
+                  }}
+                  disabled={loading}
+                  className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Progress Bar */}
+          {/* Upload Progress */}
           {loading && (
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div
+              className="mt-2 w-full bg-gray-200 rounded-full h-2 overflow-hidden"
+              role="progressbar"
+              aria-valuenow={uploadProgress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Issue upload progress"
+            >
               <motion.div
                 className="bg-blue-600 h-2"
                 initial={{ width: 0 }}
@@ -240,19 +354,16 @@ export default function ReportIssue() {
               disabled={loading}
               className="flex-1 bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-60 shadow-md hover:shadow-lg"
             >
-              {loading ? `Uploading ${uploadProgress}%` : "Submit Issue"}
+              {loading
+                ? `Uploading ${uploadProgress}%`
+                : "Submit Issue"}
             </button>
+
             <button
               type="button"
-              onClick={() => {
-                setTitle("");
-                setDescription("");
-                setLocation("");
-                setCategory("");
-                setImageFile(null);
-                setPreview(null);
-              }}
-              className="px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition"
+              onClick={resetForm}
+              disabled={loading}
+              className="px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition disabled:opacity-60"
             >
               Reset
             </button>
@@ -262,4 +373,3 @@ export default function ReportIssue() {
     </div>
   );
 }
-

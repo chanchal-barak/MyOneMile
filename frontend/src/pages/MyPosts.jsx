@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { ArrowLeft, Loader2, MapPin, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  MapPin,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "react-hot-toast";
+import api from "../api/axios";
 import { useUser } from "../context/UserContext";
 
 export default function MyPosts() {
@@ -11,60 +19,143 @@ export default function MyPosts() {
   const [expandedId, setExpandedId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [recentlyDeleted, setRecentlyDeleted] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [undoing, setUndoing] = useState(false);
+
   const navigate = useNavigate();
   const { user } = useUser();
 
-  const BACKEND_URL = "http://localhost:4000";
-
   useEffect(() => {
+    let isMounted = true;
+
     const fetchPosts = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get(`${BACKEND_URL}/api/user/myposts`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setPosts(res.data);
-      } catch (err) {
-        console.error(err);
+
+        if (!token) {
+          if (isMounted) {
+            toast.error("Please log in to view your reported issues.");
+          }
+          return;
+        }
+
+        const response = await api.get("/api/user/myposts");
+
+        if (isMounted) {
+          setPosts(Array.isArray(response.data) ? response.data : []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch posts:", error);
+
+        if (isMounted) {
+          toast.error(
+            error.response?.data?.message ||
+              "Failed to load your reported issues."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
+
     fetchPosts();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const toggleExpand = (id) => {
-    setExpandedId(expandedId === id ? null : id);
+    setExpandedId((currentId) => (currentId === id ? null : id));
   };
 
-  const confirmDelete = (id) => setDeleteId(id);
+  const confirmDelete = (id) => {
+    setDeleteId(id);
+  };
 
   const handleDelete = async () => {
+    if (!deleteId || deleting) return;
+
     const token = localStorage.getItem("token");
-    try {
-      const deleted = posts.find((p) => p._id === deleteId);
-      await axios.delete(`${BACKEND_URL}/api/issues/${deleteId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setPosts((prev) => prev.filter((p) => p._id !== deleteId));
-      setRecentlyDeleted(deleted);
+
+    if (!token) {
+      toast.error("Please log in again to delete this issue.");
+      return;
+    }
+
+    const deletedPost = posts.find((post) => post._id === deleteId);
+
+    if (!deletedPost) {
       setDeleteId(null);
-      setTimeout(() => setRecentlyDeleted(null), 5000);
-    } catch (err) {
-      console.error(err);
+      return;
+    }
+
+    setDeleting(true);
+
+    try {
+      await api.delete(`/api/issues/${encodeURIComponent(deleteId)}`);
+
+      setPosts((previousPosts) =>
+        previousPosts.filter((post) => post._id !== deleteId)
+      );
+
+      setExpandedId((currentId) =>
+        currentId === deleteId ? null : currentId
+      );
+
+      setRecentlyDeleted(deletedPost);
+      setDeleteId(null);
+
+      toast.success("Issue deleted successfully.");
+    } catch (error) {
+      console.error("Failed to delete issue:", error);
+
+      toast.error(
+        error.response?.data?.message || "Failed to delete this issue."
+      );
+    } finally {
+      setDeleting(false);
     }
   };
 
   const handleUndo = async () => {
-    if (!recentlyDeleted) return;
+    if (!recentlyDeleted || undoing) return;
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      toast.error("Please log in again to restore this issue.");
+      return;
+    }
+
+    setUndoing(true);
+
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(`${BACKEND_URL}/api/issues`, recentlyDeleted, {
-        headers: { Authorization: `Bearer ${token}` },
+      await api.post("/api/issues", recentlyDeleted);
+
+      setPosts((previousPosts) => {
+        const alreadyExists = previousPosts.some(
+          (post) => post._id === recentlyDeleted._id
+        );
+
+        if (alreadyExists) return previousPosts;
+
+        return [recentlyDeleted, ...previousPosts];
       });
+
       setRecentlyDeleted(null);
-    } catch (err) {
-      console.error("Undo failed", err);
+      toast.success("Issue restored successfully.");
+    } catch (error) {
+      console.error("Undo failed:", error);
+
+      toast.error(
+        error.response?.data?.message ||
+          "Could not restore the issue. Please try again."
+      );
+    } finally {
+      setUndoing(false);
     }
   };
 
@@ -75,7 +166,8 @@ export default function MyPosts() {
         onClick={() => navigate(-1)}
         className="flex items-center text-purple-600 mb-6 hover:text-purple-800 transition"
       >
-        <ArrowLeft className="mr-2 w-5 h-5" /> Back
+        <ArrowLeft className="mr-2 w-5 h-5" />
+        Back
       </button>
 
       {/* Heading */}
@@ -92,15 +184,18 @@ export default function MyPosts() {
         <div className="flex flex-col items-center justify-center h-64 text-center">
           <img
             src="https://cdn-icons-png.flaticon.com/512/7486/7486750.png"
-            alt="Empty"
+            alt="No reported issues"
             className="w-32 mb-4 opacity-90"
           />
           <p className="text-gray-600 text-lg">
-            You haven’t reported any issues yet.
+            You haven&apos;t reported any issues yet.
           </p>
         </div>
       ) : (
-        <motion.div layout className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <motion.div
+          layout
+          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {posts.map((issue, index) => (
             <motion.div
               key={issue._id || index}
@@ -110,24 +205,28 @@ export default function MyPosts() {
               className="bg-gradient-to-br from-purple-50 to-purple-200 shadow-md rounded-2xl border border-purple-100 hover:shadow-lg transition-all duration-300 overflow-hidden"
             >
               {/* Card Header */}
-              <div
-                className="cursor-pointer p-5 flex justify-between items-start"
+              <button
+                type="button"
+                className="w-full text-left cursor-pointer p-5 flex justify-between items-start gap-3"
                 onClick={() => toggleExpand(issue._id)}
+                aria-expanded={expandedId === issue._id}
               >
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-bold text-lg text-purple-900 mb-1">
-                    {issue.title}
+                    {issue.title || "Untitled issue"}
                   </h2>
+
                   <p className="text-gray-700 text-sm line-clamp-2">
-                    {issue.description}
+                    {issue.description || "No description provided."}
                   </p>
                 </div>
+
                 {expandedId === issue._id ? (
-                  <ChevronUp className="text-purple-600" />
+                  <ChevronUp className="text-purple-600 shrink-0" />
                 ) : (
-                  <ChevronDown className="text-purple-600" />
+                  <ChevronDown className="text-purple-600 shrink-0" />
                 )}
-              </div>
+              </button>
 
               {/* Expanded Section */}
               <AnimatePresence>
@@ -141,26 +240,38 @@ export default function MyPosts() {
                     {issue.image && (
                       <img
                         src={issue.image}
-                        alt="Issue"
+                        alt={issue.title || "Reported issue"}
                         className="rounded-lg w-full h-48 object-cover border border-purple-100"
                       />
                     )}
-                    <p className="text-gray-800 text-sm">{issue.description}</p>
-                    <div className="flex items-center justify-between text-sm text-gray-500">
+
+                    <p className="text-gray-800 text-sm">
+                      {issue.description || "No description provided."}
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-gray-500">
                       <div className="flex items-center gap-1">
                         <MapPin size={14} />
-                        <span>{issue.location || "Unknown"}</span>
+                        <span>{issue.location || "Unknown location"}</span>
                       </div>
-                      <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
+
+                      <span>
+                        {issue.createdAt &&
+                        !Number.isNaN(new Date(issue.createdAt).getTime())
+                          ? new Date(issue.createdAt).toLocaleDateString()
+                          : "Date unavailable"}
+                      </span>
                     </div>
 
                     {/* Delete Button */}
                     <div className="flex justify-end pt-3">
                       <button
+                        type="button"
                         onClick={() => confirmDelete(issue._id)}
                         className="flex items-center gap-2 text-sm bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition"
                       >
-                        <Trash2 size={16} /> Delete
+                        <Trash2 size={16} />
+                        Delete
                       </button>
                     </div>
                   </motion.div>
@@ -178,32 +289,42 @@ export default function MyPosts() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex justify-center items-center z-50"
+            className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4"
+            onClick={() => !deleting && setDeleteId(null)}
           >
             <motion.div
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.8 }}
+              onClick={(event) => event.stopPropagation()}
               className="bg-white rounded-xl p-6 shadow-xl max-w-sm w-full text-center"
             >
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
                 Confirm Deletion
               </h3>
+
               <p className="text-gray-500 mb-4">
                 Are you sure you want to delete this issue?
               </p>
+
               <div className="flex justify-center gap-3">
                 <button
+                  type="button"
                   onClick={() => setDeleteId(null)}
-                  className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
+                  disabled={deleting}
+                  className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
                 >
                   Cancel
                 </button>
+
                 <button
+                  type="button"
                   onClick={handleDelete}
-                  className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600"
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
                 >
-                  Delete
+                  {deleting && <Loader2 size={16} className="animate-spin" />}
+                  {deleting ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </motion.div>
@@ -215,17 +336,20 @@ export default function MyPosts() {
       <AnimatePresence>
         {recentlyDeleted && (
           <motion.div
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-4"
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-4 z-40"
           >
             <span>Issue deleted</span>
+
             <button
+              type="button"
               onClick={handleUndo}
-              className="bg-white text-purple-600 px-3 py-1 rounded-full font-medium hover:bg-purple-100"
+              disabled={undoing}
+              className="bg-white text-purple-600 px-3 py-1 rounded-full font-medium hover:bg-purple-100 disabled:opacity-50"
             >
-              Undo
+              {undoing ? "Restoring..." : "Undo"}
             </button>
           </motion.div>
         )}

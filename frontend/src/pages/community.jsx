@@ -1,19 +1,24 @@
+
 import { Link, useNavigate } from "react-router-dom";
 import { Users, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
+const options = [
+  { name: "Go! Ahead", path: "/community/go-ahead", active: true },
+  { name: "Discussion Starter", path: "/community/discussion", active: false },
+  {
+    name: "Shoutouts & Spotlight",
+    path: "/community/spotlight",
+    active: true,
+  },
+  { name: "Report", path: "/community/report", active: true },
+  { name: "Impact Story", path: "/community/story", active: false },
+  { name: "Q&A sessions", path: "/community/qa", active: true },
+  { name: "Community Polls", path: "/community/polls", active: true },
+];
+
 export default function Community() {
   const navigate = useNavigate();
-
-  const options = [
-    { name: "Go! Ahead", path: "/community/go-ahead", active: true },
-    { name: "Discussion Starter", path: "/community/discussion" },
-    { name: "Shoutouts & Spotlight", path: "/community/spotlight", active: true },
-    { name: "Report", path: "/community/report", active: true },
-    { name: "Impact Story", path: "/community/story" },
-    { name: "Q&A sessions", path: "/community/qa", active: true },
-    { name: "Community Polls", path: "/community/polls", active: true },
-  ];
 
   return (
     <motion.div
@@ -24,12 +29,13 @@ export default function Community() {
     >
       {/* Floating Glow Orbs */}
       <motion.div
-        className="absolute top-20 left-10 w-40 h-40 bg-orange-300 rounded-full blur-3xl opacity-20"
+        className="absolute top-20 left-10 w-40 h-40 bg-orange-300 rounded-full blur-3xl opacity-20 pointer-events-none"
         animate={{ x: [0, 20, 0], y: [0, 10, 0] }}
         transition={{ repeat: Infinity, duration: 8 }}
       />
+
       <motion.div
-        className="absolute bottom-10 right-10 w-52 h-52 bg-orange-400 rounded-full blur-3xl opacity-20"
+        className="absolute bottom-10 right-10 w-52 h-52 bg-orange-400 rounded-full blur-3xl opacity-20 pointer-events-none"
         animate={{ x: [0, -20, 0], y: [0, -10, 0] }}
         transition={{ repeat: Infinity, duration: 10 }}
       />
@@ -42,6 +48,7 @@ export default function Community() {
         transition={{ duration: 0.6 }}
       >
         <button
+          type="button"
           onClick={() => navigate(-1)}
           className="flex items-center text-orange-600 hover:text-orange-700 font-medium transition"
         >
@@ -58,6 +65,7 @@ export default function Community() {
           >
             <Users size={26} className="text-orange-600" />
           </motion.div>
+
           <h1 className="text-2xl sm:text-3xl font-extrabold text-orange-700 tracking-tight">
             Community
           </h1>
@@ -66,7 +74,7 @@ export default function Community() {
         <div className="w-10" />
       </motion.div>
 
-      {/* Options */}
+      {/* Community Options */}
       <motion.div
         className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 w-full max-w-5xl z-10 pb-16"
         initial="hidden"
@@ -79,12 +87,12 @@ export default function Community() {
           },
         }}
       >
-        {options.map((opt, i) => {
+        {options.map((opt) => {
           const isCenterPoll = opt.name === "Community Polls";
 
           return (
             <motion.div
-              key={i}
+              key={opt.path}
               className={isCenterPoll ? "lg:col-start-2" : ""}
               variants={{
                 hidden: { opacity: 0, y: 25 },
@@ -111,9 +119,9 @@ export default function Community() {
         })}
       </motion.div>
 
-      {/* Footer Text */}
+      {/* Footer */}
       <motion.p
-        className="text-gray-500 text-sm mt-8 z-10 mb-10"
+        className="text-gray-500 text-sm mt-8 z-10 mb-10 text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}

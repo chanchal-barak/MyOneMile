@@ -1,14 +1,24 @@
-// src/pages/CreateCompare.jsx
+
 import React, { useState, useMemo } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaTimes } from "react-icons/fa";
+import { toast } from "react-hot-toast";
 import { motion } from "framer-motion";
+import api from "../api/axios";
 
 const predefinedCategories = [
-  "Cleanliness", "Traffic", "Safety", "Infrastructure", "Public Transport",
-  "Air Quality", "Water Supply", "Waste Management", "Street Lighting",
-  "Healthcare", "Education", "Noise Level"
+  "Cleanliness",
+  "Traffic",
+  "Safety",
+  "Infrastructure",
+  "Public Transport",
+  "Air Quality",
+  "Water Supply",
+  "Waste Management",
+  "Street Lighting",
+  "Healthcare",
+  "Education",
+  "Noise Level",
 ];
 
 export default function CreateCompare() {
@@ -17,51 +27,115 @@ export default function CreateCompare() {
   const [title, setTitle] = useState("");
   const [area1, setArea1] = useState("");
   const [area2, setArea2] = useState("");
-
   const [categories, setCategories] = useState([]);
   const [catInput, setCatInput] = useState("");
   const [catFocus, setCatFocus] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // CATEGORY SUGGESTIONS LOGIC
   const filteredCatSuggestions = useMemo(() => {
-    if (!catInput) return predefinedCategories;
-    return predefinedCategories.filter((c) =>
-      c.toLowerCase().includes(catInput.toLowerCase())
+    const input = catInput.trim().toLowerCase();
+
+    return predefinedCategories.filter(
+      (category) =>
+        category.toLowerCase().includes(input) &&
+        !categories.some(
+          (selected) =>
+            selected.toLowerCase() === category.toLowerCase()
+        )
     );
-  }, [catInput]);
+  }, [catInput, categories]);
 
   const addCategory = (value) => {
-    const val = (value || catInput).trim();
-    if (!val || categories.includes(val)) return;
-    setCategories([...categories, val]);
+    const category = (value ?? catInput).trim();
+
+    if (!category) return;
+
+    const alreadyExists = categories.some(
+      (selected) =>
+        selected.toLowerCase() === category.toLowerCase()
+    );
+
+    if (alreadyExists) {
+      setCatInput("");
+      return;
+    }
+
+    setCategories((prev) => [...prev, category]);
     setCatInput("");
   };
 
-  const removeCategory = (i) => {
-    setCategories(categories.filter((_, idx) => idx !== i));
+  const removeCategory = (index) => {
+    setCategories((prev) =>
+      prev.filter((_, idx) => idx !== index)
+    );
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title || !area1 || !area2 || categories.length === 0) {
-      alert("Please fill all fields & add at least 1 category.");
+
+    if (
+      !title.trim() ||
+      !area1.trim() ||
+      !area2.trim() ||
+      categories.length === 0
+    ) {
+      toast.error("Please fill all fields and add at least one category.");
       return;
     }
 
+    if (area1.trim().toLowerCase() === area2.trim().toLowerCase()) {
+      toast.error("Please select two different areas.");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      toast.error("Please log in to create a comparison.");
+      navigate("/login");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const token = localStorage.getItem("token");
+      await api.post("/api/compare/add", {
+        title: title.trim(),
+        area1: area1.trim(),
+        area2: area2.trim(),
+        categories,
+      });
 
-      await axios.post(
-        "http://localhost:4000/api/compare/add",
-        { title, area1, area2, categories },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
+      toast.success("Comparison created successfully!");
       navigate("/compare");
     } catch (err) {
       console.error("Create Compare Error:", err);
-      alert("Could not create comparison");
+
+      const status = err.response?.status;
+      const message =
+        err.response?.data?.message ||
+        (status === 401
+          ? "Your session has expired. Please log in again."
+          : "Could not create comparison. Please try again.");
+
+      toast.error(message);
+
+      if (status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setTitle("");
+    setArea1("");
+    setArea2("");
+    setCategories([]);
+    setCatInput("");
+    setCatFocus(false);
   };
 
   return (
@@ -75,6 +149,7 @@ export default function CreateCompare() {
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <motion.button
+            type="button"
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.95 }}
             className="bg-white text-green-700 px-4 py-2 rounded-full shadow-sm flex items-center gap-2"
@@ -83,51 +158,72 @@ export default function CreateCompare() {
             <FaArrowLeft /> Back
           </motion.button>
 
-          <h1 className="text-3xl font-extrabold text-green-800 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-green-800 tracking-tight">
             Create Comparison
           </h1>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl border border-green-200 shadow-lg p-7">
+        <div className="bg-white rounded-2xl border border-green-200 shadow-lg p-5 sm:p-7">
           <form onSubmit={handleSubmit} className="space-y-6">
-            
             {/* TITLE */}
             <div>
-              <label className="text-green-800 font-semibold mb-1 block">
+              <label
+                htmlFor="title"
+                className="text-green-800 font-semibold mb-1 block"
+              >
                 Title
               </label>
+
               <input
+                id="title"
+                name="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Eg: sec 24 vs sec 29"
-                className="w-full rounded-xl border border-green-100 p-3 focus:ring-2 focus:ring-green-300"
+                required
+                maxLength={150}
+                className="w-full rounded-xl border border-green-100 p-3 focus:outline-none focus:ring-2 focus:ring-green-300"
               />
             </div>
 
-            {/* AREAS — SIMPLE INPUTS */}
+            {/* AREAS */}
             <div className="grid sm:grid-cols-2 gap-5">
               <div>
-                <label className="text-green-800 font-semibold mb-1 block">
+                <label
+                  htmlFor="area1"
+                  className="text-green-800 font-semibold mb-1 block"
+                >
                   Area 1
                 </label>
+
                 <input
+                  id="area1"
+                  name="area1"
                   value={area1}
                   onChange={(e) => setArea1(e.target.value)}
                   placeholder="Type Area 1"
-                  className="w-full rounded-xl border border-green-100 p-3 focus:ring-2 focus:ring-green-300"
+                  required
+                  className="w-full rounded-xl border border-green-100 p-3 focus:outline-none focus:ring-2 focus:ring-green-300"
                 />
               </div>
 
               <div>
-                <label className="text-green-800 font-semibold mb-1 block">
+                <label
+                  htmlFor="area2"
+                  className="text-green-800 font-semibold mb-1 block"
+                >
                   Area 2
                 </label>
+
                 <input
+                  id="area2"
+                  name="area2"
                   value={area2}
                   onChange={(e) => setArea2(e.target.value)}
                   placeholder="Type Area 2"
-                  className="w-full rounded-xl border border-green-100 p-3 focus:ring-2 focus:ring-green-300"
+                  required
+                  className="w-full rounded-xl border border-green-100 p-3 focus:outline-none focus:ring-2 focus:ring-green-300"
                 />
               </div>
             </div>
@@ -146,17 +242,21 @@ export default function CreateCompare() {
                   </p>
                 )}
 
-                {categories.map((cat, i) => (
+                {categories.map((category, index) => (
                   <motion.div
-                    key={cat + i}
+                    key={`${category}-${index}`}
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     className="px-3 py-1 bg-white border border-green-200 rounded-full shadow-sm flex items-center gap-2"
                   >
-                    <span className="text-green-800 text-sm">{cat}</span>
+                    <span className="text-green-800 text-sm">
+                      {category}
+                    </span>
+
                     <button
-                      onClick={() => removeCategory(i)}
                       type="button"
+                      onClick={() => removeCategory(index)}
+                      aria-label={`Remove ${category}`}
                       className="text-red-500 hover:text-red-600"
                     >
                       <FaTimes size={12} />
@@ -165,75 +265,90 @@ export default function CreateCompare() {
                 ))}
               </div>
 
-              {/* CATEGORY INPUT W/ SUGGESTIONS */}
+              {/* CATEGORY INPUT AND SUGGESTIONS */}
               <div className="relative">
                 <input
                   value={catInput}
                   onChange={(e) => setCatInput(e.target.value)}
                   onFocus={() => setCatFocus(true)}
-                  onBlur={() => setTimeout(() => setCatFocus(false), 150)}
+                  onBlur={() =>
+                    setTimeout(() => setCatFocus(false), 150)
+                  }
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       addCategory();
                     }
+
+                    if (e.key === "Escape") {
+                      setCatFocus(false);
+                    }
                   }}
                   placeholder="Type category and press Enter..."
-                  className="w-full rounded-xl border border-green-100 p-3 focus:ring-2 focus:ring-green-300"
+                  aria-label="Add comparison category"
+                  className="w-full rounded-xl border border-green-100 p-3 focus:outline-none focus:ring-2 focus:ring-green-300"
                 />
 
-                {/* DROPDOWN SUGGESTIONS */}
-                {catFocus && (
+                {catFocus && filteredCatSuggestions.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="absolute w-full bg-white border border-green-100 rounded-xl shadow-md mt-2 max-h-48 overflow-auto z-20"
                   >
-                    {filteredCatSuggestions.map((c, i) => (
+                    {filteredCatSuggestions.map((category) => (
                       <div
-                        key={i}
+                        key={category}
                         onMouseDown={(e) => {
                           e.preventDefault();
-                          addCategory(c);
+                          addCategory(category);
                         }}
                         className="px-4 py-2 hover:bg-green-50 cursor-pointer text-sm text-green-900"
                       >
-                        {c}
+                        {category}
                       </div>
                     ))}
                   </motion.div>
                 )}
               </div>
+
+              <p className="text-xs text-gray-500 mt-2">
+                Choose a suggestion or type a custom category and press Enter.
+              </p>
             </div>
 
             {/* BUTTONS */}
-            <div className="flex justify-end gap-3 pt-3">
+            <div className="flex flex-wrap justify-end gap-3 pt-3">
               <button
                 type="button"
-                onClick={() => {
-                  setTitle("");
-                  setArea1("");
-                  setArea2("");
-                  setCategories([]);
-                  setCatInput("");
-                }}
-                className="px-5 py-2 border border-green-200 rounded-xl bg-white hover:bg-gray-50 text-green-700"
+                onClick={resetForm}
+                disabled={loading}
+                className="px-5 py-2 border border-green-200 rounded-xl bg-white hover:bg-gray-50 text-green-700 disabled:opacity-50"
               >
                 Reset
               </button>
 
               <button
                 type="submit"
+                disabled={
+                  loading ||
+                  !title.trim() ||
+                  !area1.trim() ||
+                  !area2.trim() ||
+                  categories.length === 0
+                }
                 className={`px-6 py-2 text-white rounded-xl font-semibold shadow ${
-                  title && area1 && area2 && categories.length > 0
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-green-300 cursor-not-allowed"
+                  loading ||
+                  !title.trim() ||
+                  !area1.trim() ||
+                  !area2.trim() ||
+                  categories.length === 0
+                    ? "bg-green-300 cursor-not-allowed"
+                    : "bg-green-600 hover:bg-green-700"
                 }`}
               >
-                Create Comparison
+                {loading ? "Creating..." : "Create Comparison"}
               </button>
             </div>
-
           </form>
         </div>
       </div>
